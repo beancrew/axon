@@ -3,8 +3,7 @@ bin/
 *.exe
 dist/
 
-# Generated files
-gen/
+# Generated files (gen/proto/ is tracked)
 
 # Dependencies
 vendor/
