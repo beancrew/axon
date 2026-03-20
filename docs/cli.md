@@ -259,28 +259,3 @@ axon 0.1.0 (go1.22, linux/amd64)
 | 2 | Auth error (invalid/expired token) |
 | 3 | Node error (not found, offline) |
 | N | For `exec`: remote command's exit code is forwarded |
-
----
-
-# Axon CLI 设计
-
-## 概述
-
-`axon` 是无状态单二进制。从本地配置 `~/.axon/config.yaml` 读取 server 地址和 token。
-
-## 命令列表
-
-- `axon node list/info/remove` — 节点管理（gRPC unary）
-- `axon exec` — 远程执行，流式输出（server stream）
-- `axon read` — 读远程文件，分块传输（server stream）
-- `axon write` — 写远程文件，分块上传（client stream）
-- `axon forward` — 端口转发，双向数据流（BiDi stream）
-- `axon auth login/token` — 认证管理
-- `axon config set/get` — 本地配置
-- `axon version` — 版本号
-
-除 auth token、config、version 外，所有命令都需要 Server。
-
-## 输出
-
-默认 human-readable，`--json` 切换 JSON 输出。exec 的 stdout/stderr 分别映射到本地 stdout/stderr。exec 的 exit code 原样转发。

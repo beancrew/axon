@@ -294,35 +294,3 @@ WantedBy=multi-user.target
 | `status` | ⚠️ | Local + connection health |
 | `config set/get` | ❌ | Local config |
 | `version` | ❌ | Local version |
-
----
-
-# Axon Agent 设计
-
-## 概述
-
-`axon-agent` 是安装在目标机器上的轻量 daemon。反向连接 axon-server，自动注册，维持心跳，被动响应任务。
-
-## 生命周期
-
-启动即注册 → 心跳保活 → 等待任务 → 断线重连（指数退避）→ stop 优雅关闭。
-
-## 控制面
-
-一条 BiDi stream 长连接：注册、心跳（间隔由 Server 配置，默认 10s）、节点信息上报（定期 + 变更触发）。
-
-## 操作面
-
-每个任务开独立 stream：
-- exec：起子进程，流式回传 stdout/stderr + exit code
-- read：stat + 分块读取
-- write：原子写入（临时文件 + rename）
-- forward：连接本地端口，双向搬运 TCP 数据
-
-## 权限
-
-Phase 1 无限制，Agent 进程用户权限即执行权限。Phase 2 加 allowlist + 路径限制。
-
-## 重连
-
-指数退避：1s → 2s → 4s → ... → 60s，±20% jitter。重连后用已有 node_id 重新注册。

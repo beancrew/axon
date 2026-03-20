@@ -63,13 +63,20 @@ axon/
 │       ├── config.go            # config set/get
 │       └── output.go            # Output formatting (table, JSON)
 │
-├── docs/                        # Design documents
+├── docs/                        # Design documents (English)
 │   ├── architecture.md          # Architecture overview
 │   ├── protocol.md              # Protocol design (proto details)
 │   ├── cli.md                   # CLI design
 │   ├── agent.md                 # Agent design
 │   ├── server.md                # Server design
-│   └── project-structure.md     # This file
+│   ├── project-structure.md     # This file
+│   └── zh/                      # Design documents (Chinese)
+│       ├── architecture.md
+│       ├── protocol.md
+│       ├── cli.md
+│       ├── agent.md
+│       ├── server.md
+│       └── project-structure.md
 │
 ├── scripts/                     # Build & dev scripts
 │   ├── build.sh                 # Cross-platform build
@@ -165,24 +172,3 @@ release:
 	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o bin/axon-darwin-arm64 ./cmd/axon
 	# Repeat for axon-server and axon-agent...
 ```
-
----
-
-# Axon 项目结构
-
-## 目录
-
-- `cmd/` — 三个二进制入口（axon, axon-server, axon-agent），只放 main.go
-- `proto/` — Protocol Buffers 定义（control, operations, management）
-- `gen/` — proto 生成的 Go 代码
-- `pkg/` — 公共包（auth, audit, config），跨组件共享
-- `internal/` — 私有包（server, agent, cli 核心逻辑），不对外暴露
-- `docs/` — 设计文档
-- `scripts/` — 构建和开发脚本
-
-## 依赖规则
-
-- cmd → internal → gen/proto + pkg
-- pkg 包独立，不依赖 internal
-- internal/server、internal/agent、internal/cli 互不依赖
-- 禁止循环依赖

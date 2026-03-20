@@ -300,37 +300,3 @@ $ axon-server start --config /etc/axon-server/config.yaml
 $ axon-server version
 axon-server 0.1.0 (go1.22, linux/amd64)
 ```
-
----
-
-# Axon Server 设计
-
-## 概述
-
-`axon-server` 是中央控制面。单二进制，自部署。管理节点注册、认证、请求路由、审计日志。
-
-所有流量经过 Server，CLI 和 Agent 不直接通信。
-
-## 子模块
-
-1. **gRPC API 层** — 三个 gRPC service 注册在同一端口
-2. **节点注册中心** — 内存存储，管理节点状态（online/offline）
-3. **路由层** — 认证 → 授权 → 查找节点 → 派发任务 → 桥接数据流
-4. **认证模块** — JWT 签发/校验，CLI Token 绑定节点列表
-5. **审计日志** — 异步写入 SQLite，不阻塞操作
-
-## 认证
-
-- CLI Token (JWT)：user_id + node_ids + 过期时间
-- Agent Token：节点注册用，一次性验证
-- 用户存储：Phase 1 配置文件 + bcrypt
-
-## 节点管理
-
-- 注册：Agent 连接时自动注册
-- 心跳超时：3× interval 未收到心跳 → 标记 offline
-- 移除：`axon node remove` 删除注册 + 断开连接
-
-## 审计
-
-异步写入 SQLite，按时间/节点/用户可查询。审计失败不阻塞业务操作。
