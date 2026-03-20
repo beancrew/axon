@@ -12,7 +12,7 @@ lint:
 	golangci-lint run
 
 proto:
-	@echo "proto generation not yet implemented"
+	bash scripts/proto-gen.sh
 
 clean:
 	rm -rf bin/
