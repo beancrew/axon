@@ -228,10 +228,15 @@ Agent receives tasks via the control plane stream and opens data plane streams t
 
 ### Node Info Reporting
 
-Agent reports `NodeInfo` on:
+Agent reports `NodeInfo` (including detailed `OSInfo`: kernel name, kernel version, distribution, distribution version, pretty name) on:
 1. Registration (initial report)
 2. Periodic update (every 5 minutes, or configurable)
-3. On significant change (IP change, etc.)
+3. On significant change (IP change, OS upgrade, etc.)
+
+OS information is collected using standard system calls:
+- **Linux**: `/etc/os-release` for distribution info, `uname` for kernel
+- **macOS**: `sw_vers` for version, `uname` for kernel
+- **Windows**: `RtlGetVersion` for OS version info
 
 ## Reconnection
 

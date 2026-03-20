@@ -45,11 +45,19 @@ message Heartbeat {
 
 message NodeInfo {
   string hostname = 1;
-  string os = 2;              // 例如 "linux", "darwin"
-  string arch = 3;            // 例如 "amd64", "arm64"
-  string ip = 4;              // 主 IP
-  int64 uptime_seconds = 5;
-  string agent_version = 6;
+  string arch = 2;            // 例如 "amd64", "arm64"
+  string ip = 3;              // 主 IP
+  int64 uptime_seconds = 4;
+  string agent_version = 5;
+  OSInfo os_info = 6;         // 详细 OS 信息
+}
+
+message OSInfo {
+  string os = 1;              // 内核名称："linux", "darwin", "windows"
+  string os_version = 2;      // 内核版本："6.8.0-45-generic", "24.3.0"
+  string platform = 3;        // 发行版/平台："ubuntu", "centos", "debian", "macOS"
+  string platform_version = 4;// 发行版版本："24.04", "9", "14.4"
+  string pretty_name = 5;     // 可读名称："Ubuntu 24.04 LTS", "macOS 14.4 Sonoma"
 }
 
 // ─── Server → Agent ───
@@ -257,12 +265,12 @@ message NodeSummary {
   string node_id = 1;
   string node_name = 2;
   string status = 3;          // "online" | "offline"
-  string os = 4;
-  string arch = 5;
-  string ip = 6;
-  string agent_version = 7;
-  int64 connected_at = 8;     // Unix 时间戳
-  int64 last_heartbeat = 9;   // Unix 时间戳
+  string arch = 4;
+  string ip = 5;
+  string agent_version = 6;
+  int64 connected_at = 7;     // Unix 时间戳
+  int64 last_heartbeat = 8;   // Unix 时间戳
+  OSInfo os_info = 9;         // 详细 OS 信息
 }
 
 message GetNodeRequest {

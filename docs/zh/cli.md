@@ -21,10 +21,10 @@ token: "eyJhbGciOiJIUzI1NiIs..."
 
 ```
 $ axon node list
-NAME      STATUS   OS      ARCH    IP             VERSION   LAST SEEN
-web-1     online   linux   amd64   10.0.1.10      0.1.0     2s ago
-db-1      online   linux   amd64   10.0.1.20      0.1.0     5s ago
-edge-1    offline  linux   arm64   192.168.1.50   0.1.0     2m ago
+NAME      STATUS   OS                    ARCH    IP             VERSION   LAST SEEN
+web-1     online   Ubuntu 24.04 LTS      amd64   10.0.1.10      0.1.0     2s ago
+db-1      online   CentOS 9              amd64   10.0.1.20      0.1.0     5s ago
+edge-1    offline  Debian 12             arm64   192.168.1.50   0.1.0     2m ago
 ```
 
 - **Server**：✅ 需要
@@ -42,7 +42,8 @@ edge-1    offline  linux   arm64   192.168.1.50   0.1.0     2m ago
 $ axon node info web-1
 Name:           web-1
 Status:         online
-OS:             linux (amd64)
+OS:             Ubuntu 24.04 LTS (linux 6.8.0-45-generic)
+Arch:           amd64
 IP:             10.0.1.10
 Uptime:         3d 12h 5m
 Agent Version:  0.1.0

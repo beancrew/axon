@@ -59,7 +59,7 @@ type NodeEntry struct {
     NodeID        string
     NodeName      string
     Status        string            // "online" | "offline"
-    Info          NodeInfo          // OS, arch, IP, version, uptime
+    Info          NodeInfo          // hostname, arch, IP, version, uptime, OS 信息
     Labels        map[string]string
     ControlStream grpc.BidiStream   // 活跃的控制 stream 引用
     ConnectedAt   time.Time
