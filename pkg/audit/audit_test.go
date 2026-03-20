@@ -13,7 +13,7 @@ func newTestStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -253,7 +253,7 @@ func TestWriter_BufferFullDropsEntries(t *testing.T) {
 func TestWriter_ImplementsAuditor(t *testing.T) {
 	s := newTestStore(t)
 	w := NewWriter(s, 8)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 	// Compile-time interface check.
 	var _ Auditor = w
 	var _ Auditor = s
