@@ -1,0 +1,17 @@
+# Binaries
+bin/
+*.exe
+dist/
+
+# Generated files
+gen/
+
+# Dependencies
+vendor/
+
+# Environment
+.env
+
+# Test coverage
+*.out
+coverage.html
