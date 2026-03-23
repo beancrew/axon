@@ -6,7 +6,7 @@ Axon is infrastructure for AI agents. It lets agents operate remote machines —
 
 No SSH keys to manage. No YAML to write. No complex APIs to learn. Just a CLI that any agent already knows how to use.
 
-> 🇨🇳 [中文版](README_zh.md)
+> [中文版 / Chinese](README_zh.md)
 
 ## Why Axon?
 
