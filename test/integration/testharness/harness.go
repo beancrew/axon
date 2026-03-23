@@ -104,11 +104,16 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Start server in background.
+	// Start server in background, waiting for initialisation to complete
+	// before proceeding. This avoids a data race between serve() writing
+	// s.registry and the test calling Registry().
+	srvReady := make(chan struct{})
 	srvErrCh := make(chan error, 1)
 	go func() {
-		srvErrCh <- srv.ServeListener(ctx, lis)
+		srvErrCh <- srv.ServeListenerReady(ctx, lis, srvReady)
 	}()
+	<-srvReady // wait for server internals to be initialised
+	_ = srvErrCh
 
 	// Build agent config.
 	agentToken, err := auth.SignAgentToken(opts.jwtSecret, "integration-node", time.Hour)
@@ -173,13 +178,13 @@ func NewHarnessServerOnly(t *testing.T, options ...HarnessOption) *Harness {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	srvReady := make(chan struct{})
 	srvErrCh := make(chan error, 1)
 	go func() {
-		srvErrCh <- srv.ServeListener(ctx, lis)
+		srvErrCh <- srv.ServeListenerReady(ctx, lis, srvReady)
 	}()
-
-	// Give the server a moment to start serving.
-	time.Sleep(50 * time.Millisecond)
+	<-srvReady // wait for server internals to be initialised
+	_ = srvErrCh
 
 	h := &Harness{
 		t:      t,

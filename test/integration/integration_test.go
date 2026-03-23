@@ -482,7 +482,9 @@ func TestIntegration_RouterNodeOffline(t *testing.T) {
 
 	// Connect an agent, then stop it.
 	_, nodeID := h.ConnectAgent("offline-agent")
-	h.Registry().MarkOffline(nodeID)
+	if err := h.Registry().MarkOffline(nodeID); err != nil {
+		t.Fatalf("MarkOffline: %v", err)
+	}
 
 	conn := h.CLIConn()
 	client := operationspb.NewOperationsServiceClient(conn)
