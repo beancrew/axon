@@ -1,0 +1,16 @@
+# Binaries
+bin/
+*.exe
+dist/
+
+# Generated files (gen/proto/ is tracked)
+
+# Dependencies
+vendor/
+
+# Environment
+.env
+
+# Test coverage
+*.out
+coverage.html

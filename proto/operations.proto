@@ -1,0 +1,101 @@
+syntax = "proto3";
+package axon.operations;
+
+option go_package = "github.com/garysng/axon/gen/proto/operations";
+
+service OperationsService {
+  // CLI calls these RPCs. Server routes to the target agent.
+
+  // Execute a command — streams stdout/stderr back
+  rpc Exec(ExecRequest) returns (stream ExecOutput);
+
+  // Read a file — streams file content in chunks
+  rpc Read(ReadRequest) returns (stream ReadOutput);
+
+  // Write a file — client streams file content in chunks
+  rpc Write(stream WriteInput) returns (WriteResponse);
+
+  // Port forward — bidirectional byte stream
+  rpc Forward(stream TunnelData) returns (stream TunnelData);
+}
+
+// ─── Exec ───
+
+message ExecRequest {
+  string node_id = 1;
+  string command = 2;
+  map<string, string> env = 3;      // Optional environment variables
+  string working_dir = 4;           // Optional working directory
+  int32 timeout_seconds = 5;        // 0 = no timeout
+}
+
+message ExecOutput {
+  oneof payload {
+    bytes stdout = 1;
+    bytes stderr = 2;
+    ExecExit exit = 3;
+  }
+}
+
+message ExecExit {
+  int32 exit_code = 1;
+  string error = 2;           // Non-empty if agent-level error (not command error)
+}
+
+// ─── Read ───
+
+message ReadRequest {
+  string node_id = 1;
+  string path = 2;
+}
+
+message ReadOutput {
+  oneof payload {
+    bytes data = 1;           // File content chunk
+    ReadMeta meta = 2;        // Sent first: file size, permissions, etc.
+    string error = 3;
+  }
+}
+
+message ReadMeta {
+  int64 size = 1;
+  int32 mode = 2;             // Unix file mode
+  int64 modified_at = 3;      // Unix timestamp
+}
+
+// ─── Write ───
+
+message WriteInput {
+  oneof payload {
+    WriteHeader header = 1;   // Sent first
+    bytes data = 2;           // File content chunks
+  }
+}
+
+message WriteHeader {
+  string node_id = 1;
+  string path = 2;
+  int32 mode = 3;             // Unix file mode (0644 default)
+}
+
+message WriteResponse {
+  bool success = 1;
+  int64 bytes_written = 2;
+  string error = 3;
+}
+
+// ─── Forward (Port Tunneling) ───
+
+message TunnelData {
+  string connection_id = 1;   // Identifies a single TCP connection
+  bytes payload = 2;          // Raw TCP bytes
+  bool close = 3;             // Signal to close this connection
+
+  // Only in first message of a new connection:
+  TunnelOpen open = 4;
+}
+
+message TunnelOpen {
+  string node_id = 1;
+  int32 remote_port = 2;
+}

@@ -1,0 +1,65 @@
+syntax = "proto3";
+package axon.management;
+
+option go_package = "github.com/garysng/axon/gen/proto/management";
+
+import "control.proto";
+
+service ManagementService {
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+  rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+// ─── Node Management ───
+
+message ListNodesRequest {}
+
+message ListNodesResponse {
+  repeated NodeSummary nodes = 1;
+}
+
+message NodeSummary {
+  string node_id = 1;
+  string node_name = 2;
+  string status = 3;          // "online" | "offline"
+  string arch = 4;
+  string ip = 5;
+  string agent_version = 6;
+  int64 connected_at = 7;     // Unix timestamp
+  int64 last_heartbeat = 8;   // Unix timestamp
+  axon.control.OSInfo os_info = 9;  // Detailed OS information
+}
+
+message GetNodeRequest {
+  string node_id = 1;
+}
+
+message GetNodeResponse {
+  NodeSummary summary = 1;
+  int64 uptime_seconds = 2;
+  map<string, string> labels = 3;
+}
+
+message RemoveNodeRequest {
+  string node_id = 1;
+}
+
+message RemoveNodeResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ─── Auth ───
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;        // Phase 1: simple username/password
+}
+
+message LoginResponse {
+  string token = 1;           // JWT token
+  int64 expires_at = 2;       // Unix timestamp
+  string error = 3;
+}
