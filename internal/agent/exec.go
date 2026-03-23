@@ -51,6 +51,20 @@ func (h *ExecHandler) Handle(ctx context.Context, req *operationspb.ExecRequest,
 	// Enable process group kill so child processes are cleaned up.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
+	// Use cmd.Cancel to SIGTERM the process group on context cancellation,
+	// and WaitDelay to escalate to SIGKILL after the grace period.
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return nil
+		}
+		pgid, err := syscall.Getpgid(cmd.Process.Pid)
+		if err != nil {
+			return cmd.Process.Kill()
+		}
+		return syscall.Kill(-pgid, syscall.SIGTERM)
+	}
+	cmd.WaitDelay = killGracePeriod
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		sendError(send, fmt.Sprintf("stdout pipe: %v", err))
@@ -97,17 +111,17 @@ func (h *ExecHandler) Handle(ctx context.Context, req *operationspb.ExecRequest,
 	var exitErr string
 
 	if err := cmd.Wait(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode = exitError.ExitCode()
-		} else if ctx.Err() != nil {
-			// Context cancelled or timed out — kill the process group.
-			killProcessGroup(cmd)
+		if ctx.Err() != nil {
+			// Context cancelled or timed out — process group already killed
+			// via cmd.Cancel / cmd.WaitDelay.
 			exitCode = -1
 			if ctx.Err() == context.DeadlineExceeded {
 				exitErr = "timeout exceeded"
 			} else {
 				exitErr = "cancelled"
 			}
+		} else if exitError, ok := err.(*exec.ExitError); ok {
+			exitCode = exitError.ExitCode()
 		} else {
 			exitCode = -1
 			exitErr = err.Error()
@@ -156,37 +170,6 @@ func sendError(send func(*operationspb.ExecOutput) error, msg string) {
 	})
 }
 
-// killProcessGroup sends SIGTERM to the process group, waits killGracePeriod,
-// then sends SIGKILL if the process is still running.
-func killProcessGroup(cmd *exec.Cmd) {
-	if cmd.Process == nil {
-		return
-	}
-	pgid, err := syscall.Getpgid(cmd.Process.Pid)
-	if err != nil {
-		// Fallback: kill the process directly.
-		_ = cmd.Process.Kill()
-		return
-	}
-
-	// Send SIGTERM to the process group.
-	_ = syscall.Kill(-pgid, syscall.SIGTERM)
-
-	// Wait briefly, then SIGKILL if still alive.
-	done := make(chan struct{})
-	go func() {
-		_, _ = cmd.Process.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		return
-	case <-time.After(killGracePeriod):
-		_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	}
-}
-
 // shellCommand returns the shell binary and flag for the current platform.
 func shellCommand() (string, string) {
 	if runtime.GOOS == "windows" {
@@ -199,11 +182,8 @@ func shellCommand() (string, string) {
 // with the provided overrides.
 func buildEnv(overrides map[string]string) []string {
 	// Start with current environment.
-	env := make([]string, 0)
-	for _, e := range syscall.Environ() {
-		env = append(env, e)
-	}
-	// Apply overrides.
+	env := append([]string{}, syscall.Environ()...)
+	// Apply overrides (appended last; Go exec uses last-wins for duplicate keys).
 	for k, v := range overrides {
 		env = append(env, k+"="+v)
 	}
