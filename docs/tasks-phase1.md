@@ -357,3 +357,12 @@ C-1 (scaffold)
 2. **Q-2** Proto 验证（生成代码一致性检查）
 3. **Q-3** 集成测试框架
 4. **Q-4** Release pipeline（跨平台编译 + GitHub Release）
+
+---
+
+## Backlog (non-blocking improvements)
+
+| # | Item | Source | Priority |
+|---|------|--------|----------|
+| B-1 | Forward audit log: include remote port in detail (not just node_id) | PR #11 review | Low |
+| B-2 | Login token expiry: make configurable instead of hardcoded 24h | PR #11 review | Low |
