@@ -18,6 +18,13 @@ func ClaimsFromContext(ctx context.Context) (*Claims, bool) {
 	return c, ok && c != nil
 }
 
+// InjectClaims returns a child context carrying claims. This is intended for
+// testing only; production code relies on the interceptors.
+func InjectClaims(ctx context.Context, claims *Claims) context.Context {
+	return context.WithValue(ctx, contextKey{}, claims)
+}
+
+
 // UnaryInterceptor returns a gRPC unary server interceptor that validates the
 // JWT supplied in the "authorization" metadata header and injects Claims into
 // the request context.

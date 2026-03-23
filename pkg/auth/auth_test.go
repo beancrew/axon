@@ -29,8 +29,8 @@ func TestSignCLIToken_RoundTrip(t *testing.T) {
 	if claims.UserID != "user-42" {
 		t.Errorf("UserID = %q, want %q", claims.UserID, "user-42")
 	}
-	if claims.Kind != kindCLI {
-		t.Errorf("Kind = %q, want %q", claims.Kind, kindCLI)
+	if claims.Kind != KindCLI {
+		t.Errorf("Kind = %q, want %q", claims.Kind, KindCLI)
 	}
 	if len(claims.NodeIDs) != 2 {
 		t.Errorf("NodeIDs len = %d, want 2", len(claims.NodeIDs))
@@ -50,8 +50,8 @@ func TestSignAgentToken_RoundTrip(t *testing.T) {
 	if claims.NodeID != "node-99" {
 		t.Errorf("NodeID = %q, want %q", claims.NodeID, "node-99")
 	}
-	if claims.Kind != kindAgent {
-		t.Errorf("Kind = %q, want %q", claims.Kind, kindAgent)
+	if claims.Kind != KindAgent {
+		t.Errorf("Kind = %q, want %q", claims.Kind, KindAgent)
 	}
 }
 
@@ -147,7 +147,7 @@ func TestClaimsFromContext_Missing(t *testing.T) {
 }
 
 func TestClaimsFromContext_Present(t *testing.T) {
-	c := &Claims{UserID: "u1", Kind: kindCLI}
+	c := &Claims{UserID: "u1", Kind: KindCLI}
 	ctx := context.WithValue(context.Background(), contextKey{}, c)
 	got, ok := ClaimsFromContext(ctx)
 	if !ok {
@@ -289,5 +289,55 @@ func TestStreamInterceptor_InvalidToken(t *testing.T) {
 	}
 	if code := status.Code(err); code != codes.Unauthenticated {
 		t.Errorf("code = %v, want Unauthenticated", code)
+	}
+}
+
+// ---- Wildcard Access ----
+
+func TestHasNodeAccess_Wildcard(t *testing.T) {
+	tok, err := SignCLIToken(testSecret, "admin", []string{"*"}, time.Hour)
+	if err != nil {
+		t.Fatalf("SignCLIToken error: %v", err)
+	}
+	claims, err := ValidateToken(testSecret, tok)
+	if err != nil {
+		t.Fatalf("ValidateToken error: %v", err)
+	}
+
+	if !HasNodeAccess(claims, "node-a") {
+		t.Error("expected wildcard to grant access to node-a")
+	}
+	if !HasNodeAccess(claims, "node-z") {
+		t.Error("expected wildcard to grant access to node-z")
+	}
+	if !HasNodeAccess(claims, "any-random-id") {
+		t.Error("expected wildcard to grant access to any node")
+	}
+}
+
+func TestHasNodeAccess_WildcardMixed(t *testing.T) {
+	tok, err := SignCLIToken(testSecret, "user", []string{"node-a", "*"}, time.Hour)
+	if err != nil {
+		t.Fatalf("SignCLIToken error: %v", err)
+	}
+	claims, err := ValidateToken(testSecret, tok)
+	if err != nil {
+		t.Fatalf("ValidateToken error: %v", err)
+	}
+
+	if !HasNodeAccess(claims, "node-b") {
+		t.Error("expected wildcard to grant access to node-b")
+	}
+}
+
+func TestInjectClaims(t *testing.T) {
+	c := &Claims{UserID: "test-user", Kind: KindCLI}
+	ctx := InjectClaims(context.Background(), c)
+	got, ok := ClaimsFromContext(ctx)
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	if got.UserID != "test-user" {
+		t.Errorf("UserID = %q, want %q", got.UserID, "test-user")
 	}
 }

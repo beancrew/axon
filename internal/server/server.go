@@ -12,26 +12,32 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	controlpb "github.com/garysng/axon/gen/proto/control"
+	managementpb "github.com/garysng/axon/gen/proto/management"
+	operationspb "github.com/garysng/axon/gen/proto/operations"
 	"github.com/garysng/axon/internal/server/registry"
+	"github.com/garysng/axon/pkg/audit"
 	"github.com/garysng/axon/pkg/auth"
 )
 
 // ServerConfig holds configuration for the gRPC server.
 type ServerConfig struct {
-	ListenAddr         string
-	TLSCertPath        string
-	TLSKeyPath         string
-	JWTSecret          string
-	HeartbeatInterval  time.Duration
-	HeartbeatTimeout   time.Duration
+	ListenAddr        string
+	TLSCertPath       string
+	TLSKeyPath        string
+	JWTSecret         string
+	HeartbeatInterval time.Duration
+	HeartbeatTimeout  time.Duration
+	AuditDBPath       string      // SQLite path; empty or ":memory:" for in-process
+	Users             []UserEntry // CLI user credentials for Login
 }
 
 // Server wraps a gRPC server with its dependencies.
 type Server struct {
-	cfg      ServerConfig
-	grpc     *grpc.Server
-	registry *registry.Registry
-	control  *ControlService
+	cfg         ServerConfig
+	grpc        *grpc.Server
+	registry    *registry.Registry
+	control     *ControlService
+	auditWriter *audit.Writer
 }
 
 // NewServer creates a new Server with the given configuration.
@@ -64,7 +70,25 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
 	s.control = newControlService(s.registry, s.cfg)
 
+	// Initialize audit.
+	auditDBPath := s.cfg.AuditDBPath
+	if auditDBPath == "" {
+		auditDBPath = ":memory:"
+	}
+	auditStore, err := audit.NewStore(auditDBPath)
+	if err != nil {
+		return fmt.Errorf("server: init audit store: %w", err)
+	}
+	s.auditWriter = audit.NewWriter(auditStore, 256)
+
+	// Build router, operations, and management services.
+	router := newRouter(s.registry)
+	ops := newOperationsService(router, s.control, s.auditWriter)
+	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret)
+
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
+	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
+	managementpb.RegisterManagementServiceServer(s.grpc, mgmt)
 
 	// Start heartbeat monitor; it stops when ctx is cancelled.
 	s.registry.StartMonitor(ctx)
@@ -82,10 +106,13 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	return nil
 }
 
-// GracefulStop shuts down the gRPC server gracefully.
+// GracefulStop shuts down the gRPC server gracefully and flushes the audit log.
 func (s *Server) GracefulStop() {
 	if s.grpc != nil {
 		s.grpc.GracefulStop()
+	}
+	if s.auditWriter != nil {
+		_ = s.auditWriter.Close()
 	}
 }
 
@@ -112,14 +139,32 @@ func (s *Server) buildServerOptions() ([]grpc.ServerOption, error) {
 		opts = append(opts, grpc.Creds(creds))
 	}
 
-	// The ControlService/Connect stream handles its own token validation, so the
-	// generic auth interceptors protect all other methods.
+	// The ControlService/Connect stream handles its own token validation, and
+	// ManagementService/Login is the unauthenticated entry point. All other
+	// methods require a valid JWT.
 	opts = append(opts,
-		grpc.ChainUnaryInterceptor(auth.UnaryInterceptor(s.cfg.JWTSecret)),
+		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret)),
 		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret)),
 	)
 
 	return opts, nil
+}
+
+// skipLoginUnaryInterceptor wraps auth.UnaryInterceptor but bypasses JWT auth
+// for ManagementService/Login (which is the unauthenticated login endpoint).
+func skipLoginUnaryInterceptor(secret string) grpc.UnaryServerInterceptor {
+	inner := auth.UnaryInterceptor(secret)
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		if info.FullMethod == managementpb.ManagementService_Login_FullMethodName {
+			return handler(ctx, req)
+		}
+		return inner(ctx, req, info, handler)
+	}
 }
 
 // skipConnectStreamInterceptor wraps auth.StreamInterceptor but bypasses JWT

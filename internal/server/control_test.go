@@ -77,7 +77,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	t.Cleanup(func() {
 		cancel()
 		srv.grpc.Stop()
-		conn.Close()
+		_ = conn.Close()
 	})
 
 	return &testEnv{

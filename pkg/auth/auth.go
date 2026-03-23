@@ -7,11 +7,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type tokenKind string
+// TokenKind identifies the type of JWT token.
+type TokenKind string
 
 const (
-	kindCLI   tokenKind = "cli"
-	kindAgent tokenKind = "agent"
+	// KindCLI is a CLI user token.
+	KindCLI TokenKind = "cli"
+	// KindAgent is an agent node token.
+	KindAgent TokenKind = "agent"
 )
 
 // Claims holds the data embedded in a JWT.
@@ -19,7 +22,7 @@ type Claims struct {
 	UserID  string    `json:"uid,omitempty"`
 	NodeID  string    `json:"nid,omitempty"`
 	NodeIDs []string  `json:"nids,omitempty"`
-	Kind    tokenKind `json:"kind"`
+	Kind    TokenKind `json:"kind"`
 	jwt.RegisteredClaims
 }
 
@@ -29,7 +32,7 @@ func SignCLIToken(secret, userID string, nodeIDs []string, expiry time.Duration)
 	claims := Claims{
 		UserID:  userID,
 		NodeIDs: nodeIDs,
-		Kind:    kindCLI,
+		Kind:    KindCLI,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
@@ -43,7 +46,7 @@ func SignAgentToken(secret, nodeID string, expiry time.Duration) (string, error)
 	now := time.Now()
 	claims := Claims{
 		NodeID: nodeID,
-		Kind:   kindAgent,
+		Kind:   KindAgent,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
@@ -77,16 +80,17 @@ func ValidateToken(secret, tokenStr string) (*Claims, error) {
 
 // HasNodeAccess reports whether the claims grant access to the given nodeID.
 // CLI tokens carry a NodeIDs allowlist; agent tokens are bound to a single NodeID.
+// A CLI token with "*" in NodeIDs grants access to all nodes.
 func HasNodeAccess(claims *Claims, nodeID string) bool {
 	if claims == nil {
 		return false
 	}
 	switch claims.Kind {
-	case kindAgent:
+	case KindAgent:
 		return claims.NodeID == nodeID
-	case kindCLI:
+	case KindCLI:
 		for _, id := range claims.NodeIDs {
-			if id == nodeID {
+			if id == "*" || id == nodeID {
 				return true
 			}
 		}
