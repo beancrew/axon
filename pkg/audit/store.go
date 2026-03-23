@@ -38,7 +38,7 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("audit: open db: %w", err)
 	}
 	if _, err := db.Exec(schema); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("audit: migrate schema: %w", err)
 	}
 	return &Store{db: db}, nil
@@ -105,7 +105,7 @@ func (s *Store) Query(opts QueryOptions) ([]AuditEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("audit: query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []AuditEntry
 	for rows.Next() {
