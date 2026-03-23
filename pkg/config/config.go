@@ -23,11 +23,12 @@ type ServerConfig struct {
 
 // AgentConfig holds configuration for the Axon agent.
 type AgentConfig struct {
-	ServerAddr string            `yaml:"server_addr"`
-	Token      string            `yaml:"token"`
-	NodeName   string            `yaml:"node_name"`
-	Labels     map[string]string `yaml:"labels"`
-	TLSInsecure bool             `yaml:"tls_insecure"`
+	ServerAddr  string            `yaml:"server_addr"`
+	Token       string            `yaml:"token"`
+	NodeID      string            `yaml:"node_id,omitempty"` // assigned by server after first registration
+	NodeName    string            `yaml:"node_name"`
+	Labels      map[string]string `yaml:"labels"`
+	TLSInsecure bool              `yaml:"tls_insecure"`
 }
 
 // CLIConfig holds configuration for the Axon CLI.
@@ -109,6 +110,30 @@ func LoadCLIConfig(path string) (*CLIConfig, error) {
 
 	applyCLIEnv(cfg)
 	return cfg, nil
+}
+
+// SaveAgentConfig writes the agent configuration to the given path, creating
+// parent directories as needed. The file is created with mode 0600 to protect
+// the token.
+func SaveAgentConfig(path string, cfg *AgentConfig) error {
+	return saveYAML(path, cfg)
+}
+
+// saveYAML marshals src to YAML and writes it to path, creating parent
+// directories with mode 0700 and the file with mode 0600.
+func saveYAML(path string, src any) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("config: create dir %q: %w", dir, err)
+	}
+	data, err := yaml.Marshal(src)
+	if err != nil {
+		return fmt.Errorf("config: marshal: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return fmt.Errorf("config: write %q: %w", path, err)
+	}
+	return nil
 }
 
 // loadYAML reads a YAML file into dst. If the file does not exist, it returns nil
