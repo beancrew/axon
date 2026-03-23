@@ -30,7 +30,7 @@ func startEchoServer(t *testing.T) int {
 				return
 			}
 			go func(c net.Conn) {
-				defer c.Close()
+				defer func() { _ = c.Close() }()
 				_, _ = io.Copy(c, c)
 			}(conn)
 		}

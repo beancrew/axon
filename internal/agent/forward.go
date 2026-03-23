@@ -49,7 +49,11 @@ func (h *ForwardHandler) Handle(
 	// gRPC → TCP: read from stream, write to TCP.
 	go func() {
 		defer wg.Done()
-		defer func() { _ = conn.(*net.TCPConn).CloseWrite() }()
+		defer func() {
+			if tc, ok := conn.(*net.TCPConn); ok {
+				_ = tc.CloseWrite()
+			}
+		}()
 
 		for {
 			msg, err := recv()
@@ -122,20 +126,18 @@ func (h *ForwardHandler) HandleStream(
 	// Create a wrapper recv that returns the first payload then delegates.
 	var firstPayloadConsumed bool
 	wrappedRecv := func() (*operationspb.TunnelData, error) {
-		if !firstPayloadConsumed && len(first.Payload) > 0 {
+		if !firstPayloadConsumed {
 			firstPayloadConsumed = true
-			return &operationspb.TunnelData{
-				ConnectionId: connID,
-				Payload:      first.Payload,
-			}, nil
+			if len(first.Payload) > 0 {
+				return &operationspb.TunnelData{
+					ConnectionId: connID,
+					Payload:      first.Payload,
+				}, nil
+			}
+			if first.Close {
+				return &operationspb.TunnelData{Close: true}, io.EOF
+			}
 		}
-		firstPayloadConsumed = true
-
-		// Check if first message was also a close.
-		if !firstPayloadConsumed && first.Close {
-			return &operationspb.TunnelData{Close: true}, io.EOF
-		}
-
 		return recv()
 	}
 
