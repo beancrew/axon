@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
@@ -62,10 +63,40 @@ func (cs *ControlService) Connect(stream controlpb.ControlService_ConnectServer)
 	}
 	_ = claims // claims available for future use (e.g. ACLs)
 
-	// Assign a node ID and register.
-	nodeID := uuid.NewString()
+	tokenHash := hashToken(req.Token)
 	info := protoNodeInfoToRegistry(req.Info)
-	if err := cs.reg.Register(nodeID, req.NodeName, info); err != nil {
+
+	// Determine node ID: reconnection (node_id set) or first registration.
+	var nodeID string
+	if req.NodeId != "" {
+		// Reconnection: verify the token hash matches the stored one.
+		existing, ok := cs.reg.Lookup(req.NodeId)
+		if !ok {
+			return status.Errorf(codes.NotFound, "control: node %q not found for reconnection", req.NodeId)
+		}
+		if existing.TokenHash != "" && existing.TokenHash != tokenHash {
+			return status.Errorf(codes.PermissionDenied, "control: token mismatch for node %q", req.NodeId)
+		}
+		nodeID = req.NodeId
+	} else {
+		// First registration: check if node_name already exists.
+		if existing, ok := cs.reg.LookupByName(req.NodeName); ok {
+			// Same name reconnecting — verify token hash only if online.
+			// Offline nodes can be reclaimed with a new token.
+			if existing.Status == "online" {
+				return status.Errorf(codes.AlreadyExists, "control: node name %q already connected", req.NodeName)
+			}
+			if existing.TokenHash != "" && existing.TokenHash != tokenHash {
+				return status.Errorf(codes.PermissionDenied,
+					"control: node name %q is owned by a different token", req.NodeName)
+			}
+			nodeID = existing.NodeID
+		} else {
+			nodeID = uuid.NewString()
+		}
+	}
+
+	if err := cs.reg.Register(nodeID, req.NodeName, tokenHash, info); err != nil {
 		return status.Errorf(codes.Internal, "control: register node: %v", err)
 	}
 
@@ -135,7 +166,7 @@ func (cs *ControlService) Connect(stream controlpb.ControlService_ConnectServer)
 				if entry, ok := cs.reg.Lookup(nodeID); ok {
 					nodeName = entry.NodeName
 				}
-				if err := cs.reg.Register(nodeID, nodeName, info); err != nil {
+				if err := cs.reg.Register(nodeID, nodeName, tokenHash, info); err != nil {
 					log.Printf("control: update node info %s: %v", nodeID, err)
 				}
 				// Restore stream reference (Register clears it on re-register).
@@ -192,4 +223,10 @@ func protoNodeInfoToRegistry(info *controlpb.NodeInfo) registry.NodeInfo {
 		}
 	}
 	return ri
+}
+
+// hashToken returns a hex-encoded SHA-256 hash of the given token string.
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return fmt.Sprintf("%x", h)
 }

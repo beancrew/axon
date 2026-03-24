@@ -87,18 +87,21 @@ func TestIntegration_AgentDisconnectReconnect(t *testing.T) {
 	// Wait for node to go offline.
 	h.WaitForNodeStatus(nodeID, registry.StatusOffline)
 
-	// Connect a new agent with the same name — it gets a new node ID.
-	_, newNodeID := h.ConnectAgent("disc-reconnect-agent")
-	if newNodeID == "" {
+	// Reconnect with the same token — the agent reclaims its existing node ID.
+	_, reconnNodeID := h.ConnectAgentWithToken("disc-reconnect-agent", h.AgentToken())
+	if reconnNodeID == "" {
 		t.Fatal("expected non-empty node ID after reconnect")
 	}
-
-	newEntry, ok := h.Registry().Lookup(newNodeID)
-	if !ok {
-		t.Fatalf("reconnected node %s not found", newNodeID)
+	if reconnNodeID != nodeID {
+		t.Errorf("reconnected node ID = %q, want original %q", reconnNodeID, nodeID)
 	}
-	if newEntry.Status != registry.StatusOnline {
-		t.Errorf("reconnected status = %q, want %q", newEntry.Status, registry.StatusOnline)
+
+	reconnEntry, ok := h.Registry().Lookup(reconnNodeID)
+	if !ok {
+		t.Fatalf("reconnected node %s not found", reconnNodeID)
+	}
+	if reconnEntry.Status != registry.StatusOnline {
+		t.Errorf("reconnected status = %q, want %q", reconnEntry.Status, registry.StatusOnline)
 	}
 }
 

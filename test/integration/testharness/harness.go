@@ -33,6 +33,7 @@ type Harness struct {
 
 	opts harnessOpts
 
+	agentToken  string // JWT token used by the primary agent
 	agentNodeID string
 	agentCancel context.CancelFunc
 }
@@ -147,6 +148,7 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 		lis:         lis,
 		cancel:      cancel,
 		opts:        opts,
+		agentToken:  agentToken,
 		agentCancel: agentCancel,
 	}
 
@@ -206,6 +208,9 @@ func (h *Harness) Registry() *registry.Registry { return h.srv.Registry() }
 
 // AgentNodeID returns the node ID assigned to the agent.
 func (h *Harness) AgentNodeID() string { return h.agentNodeID }
+
+// AgentToken returns the JWT token used by the primary agent.
+func (h *Harness) AgentToken() string { return h.agentToken }
 
 // CLIConn returns a gRPC client connection authenticated with a CLI JWT token
 // that has wildcard ("*") node access.
@@ -292,6 +297,35 @@ func (h *Harness) ConnectAgent(name string) (*agent.Agent, string) {
 	h.t.Cleanup(agentCancel)
 
 	// Wait for agent to register.
+	nodeID := h.waitForNodeByName(name)
+	return agt, nodeID
+}
+
+// ConnectAgentWithToken connects a new agent using the given JWT token and
+// waits for it to register. Use this when the reconnecting agent must present
+// the same token hash as the previously registered node.
+func (h *Harness) ConnectAgentWithToken(name, token string) (*agent.Agent, string) {
+	h.t.Helper()
+
+	agentCfg := config.AgentConfig{
+		ServerAddr:  "passthrough://bufnet",
+		Token:       token,
+		NodeName:    name,
+		TLSInsecure: true,
+	}
+
+	agt := agent.NewAgent(agentCfg, "")
+	agt.SetDialOverride(grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return h.lis.DialContext(ctx)
+	}))
+
+	agentCtx, agentCancel := context.WithCancel(context.Background())
+	go func() {
+		_ = agt.Run(agentCtx)
+	}()
+
+	h.t.Cleanup(agentCancel)
+
 	nodeID := h.waitForNodeByName(name)
 	return agt, nodeID
 }

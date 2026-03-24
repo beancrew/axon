@@ -87,28 +87,34 @@ func NewRegistry(heartbeatTimeout time.Duration, store ...Store) *Registry {
 }
 
 // Register adds or updates a node entry, setting its status to online.
-// tokenHash is the SHA-256 of the agent token (used for stable identity verification).
-func (r *Registry) Register(nodeID, nodeName string, info NodeInfo, tokenHash ...string) error {
+// tokenHash is the SHA-256 of the agent token (required; pass "" when not applicable).
+func (r *Registry) Register(nodeID, nodeName, tokenHash string, info NodeInfo) error {
 	if nodeID == "" {
 		return fmt.Errorf("registry: register: nodeID must not be empty")
 	}
 	now := time.Now()
-	th := ""
-	if len(tokenHash) > 0 {
-		th = tokenHash[0]
-	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Check for name collision from a different node_id.
+	for id, e := range r.nodes {
+		if e.NodeName == nodeName && id != nodeID {
+			return fmt.Errorf("registry: register: node name %q is already used by node %s", nodeName, id)
+		}
+	}
+
 	if existing, ok := r.nodes[nodeID]; ok {
-		// Re-registration: update fields but preserve RegisteredAt and TokenHash.
+		// Re-registration: update fields, preserve RegisteredAt, update TokenHash if provided.
 		existing.NodeName = nodeName
 		existing.Info = info
 		existing.Status = StatusOnline
 		existing.ConnectedAt = now
 		existing.LastHeartbeat = now
 		existing.stream = nil
+		if tokenHash != "" {
+			existing.TokenHash = tokenHash
+		}
 		if r.store != nil {
 			if err := r.store.Save(existing); err != nil {
 				log.Printf("registry: persist re-register %s: %v", nodeID, err)
@@ -120,7 +126,7 @@ func (r *Registry) Register(nodeID, nodeName string, info NodeInfo, tokenHash ..
 	entry := &NodeEntry{
 		NodeID:        nodeID,
 		NodeName:      nodeName,
-		TokenHash:     th,
+		TokenHash:     tokenHash,
 		Info:          info,
 		Status:        StatusOnline,
 		ConnectedAt:   now,

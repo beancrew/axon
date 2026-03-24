@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -35,6 +36,9 @@ type Store interface {
 	Save(entry *NodeEntry) error
 	Delete(nodeID string) error
 	UpdateHeartbeat(nodeID string, t time.Time) error
+	// FlushHeartbeats persists multiple heartbeat timestamps atomically in a
+	// single transaction. Implementations must not partially commit on error.
+	FlushHeartbeats(records map[string]time.Time) error
 	UpdateStatus(nodeID string, status string) error
 	Close() error
 }
@@ -107,10 +111,14 @@ func (s *SQLiteStore) LoadAll() ([]NodeEntry, error) {
 			e.LastHeartbeat = time.Unix(hbAt.Int64, 0)
 		}
 		if osInfoJSON.Valid && osInfoJSON.String != "" {
-			_ = json.Unmarshal([]byte(osInfoJSON.String), &e.Info.OSInfo)
+			if err := json.Unmarshal([]byte(osInfoJSON.String), &e.Info.OSInfo); err != nil {
+				log.Printf("registry store: unmarshal os_info for %s: %v", e.NodeID, err)
+			}
 		}
 		if labelsJSON.Valid && labelsJSON.String != "" {
-			_ = json.Unmarshal([]byte(labelsJSON.String), &e.Labels)
+			if err := json.Unmarshal([]byte(labelsJSON.String), &e.Labels); err != nil {
+				log.Printf("registry store: unmarshal labels for %s: %v", e.NodeID, err)
+			}
 		}
 		if e.Labels == nil {
 			e.Labels = make(map[string]string)
@@ -136,6 +144,7 @@ func (s *SQLiteStore) Save(entry *NodeEntry) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(node_id) DO UPDATE SET
 		    node_name = excluded.node_name,
+		    token_hash = excluded.token_hash,
 		    arch = excluded.arch,
 		    ip = excluded.ip,
 		    agent_version = excluded.agent_version,
@@ -176,6 +185,32 @@ func (s *SQLiteStore) UpdateHeartbeat(nodeID string, t time.Time) error {
 	)
 	if err != nil {
 		return fmt.Errorf("registry store: update heartbeat %s: %w", nodeID, err)
+	}
+	return nil
+}
+
+// FlushHeartbeats updates last_heartbeat for all nodes in records atomically.
+func (s *SQLiteStore) FlushHeartbeats(records map[string]time.Time) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("registry store: begin heartbeat tx: %w", err)
+	}
+	stmt, err := tx.Prepare("UPDATE nodes SET last_heartbeat = ?, updated_at = ? WHERE node_id = ?")
+	if err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("registry store: prepare heartbeat stmt: %w", err)
+	}
+	defer func() { _ = stmt.Close() }()
+
+	now := time.Now().Unix()
+	for nodeID, t := range records {
+		if _, err := stmt.Exec(t.Unix(), now, nodeID); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("registry store: flush heartbeat %s: %w", nodeID, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("registry store: commit heartbeats: %w", err)
 	}
 	return nil
 }

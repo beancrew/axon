@@ -67,7 +67,7 @@ func (b *heartbeatBatcher) Stop() {
 	b.wg.Wait()
 }
 
-// flush writes all pending heartbeat timestamps to the store.
+// flush writes all pending heartbeat timestamps to the store in one transaction.
 func (b *heartbeatBatcher) flush() {
 	b.mu.Lock()
 	if len(b.pending) == 0 {
@@ -78,9 +78,7 @@ func (b *heartbeatBatcher) flush() {
 	b.pending = make(map[string]time.Time)
 	b.mu.Unlock()
 
-	for nodeID, t := range batch {
-		if err := b.store.UpdateHeartbeat(nodeID, t); err != nil {
-			log.Printf("registry: flush heartbeat %s: %v", nodeID, err)
-		}
+	if err := b.store.FlushHeartbeats(batch); err != nil {
+		log.Printf("registry: flush heartbeats: %v", err)
 	}
 }

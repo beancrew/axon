@@ -23,6 +23,7 @@ message RegisterRequest {
   string token = 1;           // Agent token (one-time registration)
   string node_name = 2;       // Desired node name (falls back to hostname)
   NodeInfo info = 3;          // Initial node info
+  string node_id = 4;         // Non-empty on reconnection (stable identity)
 }
 
 message Heartbeat {
