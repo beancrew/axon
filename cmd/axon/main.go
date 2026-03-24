@@ -31,6 +31,8 @@ func rootCmd() *cobra.Command {
 	root.AddCommand(
 		versionCmd(),
 		configCmd(),
+		nodeCmd(),
+		authCmd(),
 	)
 
 	return root
@@ -75,7 +77,7 @@ func configGetCmd() *cobra.Command {
 			case "server":
 				fmt.Println(cfg.ServerAddr)
 			case "token":
-				fmt.Println(cfg.Token)
+				fmt.Println(maskToken(cfg.Token))
 			case "output_format":
 				fmt.Println(cfg.OutputFormat)
 			default:
@@ -84,6 +86,17 @@ func configGetCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// maskToken returns a masked version of a token for display (e.g. "eyJhbG...4F0").
+func maskToken(token string) string {
+	if token == "" {
+		return "(not set)"
+	}
+	if len(token) < 12 {
+		return "***"
+	}
+	return token[:6] + "..." + token[len(token)-3:]
 }
 
 func configSetCmd() *cobra.Command {
