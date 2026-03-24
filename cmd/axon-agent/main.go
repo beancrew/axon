@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -107,6 +108,41 @@ func maskToken(token string) string {
 	return token[:6] + "..." + token[len(token)-3:]
 }
 
+// agentStatus is the JSON-serialisable representation of the status command
+// output.
+type agentStatus struct {
+	Status   string `json:"status"`
+	PID      int    `json:"pid,omitempty"`
+	Server   string `json:"server"`
+	NodeID   string `json:"node_id"`
+	NodeName string `json:"node_name"`
+	Uptime   string `json:"uptime,omitempty"`
+}
+
+// formatUptime formats a duration as "Xd Yh Zm", omitting leading zero
+// components (except always emitting at least minutes).
+func formatUptime(d time.Duration) string {
+	d = d.Truncate(time.Minute)
+	total := int(d.Minutes())
+	if total <= 0 {
+		return "0m"
+	}
+	mins := total % 60
+	total /= 60
+	hours := total % 24
+	days := total / 24
+
+	var parts []string
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%dd", days))
+	}
+	if hours > 0 || days > 0 {
+		parts = append(parts, fmt.Sprintf("%dh", hours))
+	}
+	parts = append(parts, fmt.Sprintf("%dm", mins))
+	return strings.Join(parts, " ")
+}
+
 // ── version ────────────────────────────────────────────────────────────────
 
 func versionCmd() *cobra.Command {
@@ -114,7 +150,7 @@ func versionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version info",
 		Run: func(cmd *cobra.Command, args []string) {
-			_, _ = fmt.Printf("axon-agent %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "axon-agent %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		},
 	}
 }
@@ -134,6 +170,12 @@ func startCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start the agent",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Prevent double-start.
+			pidPath := pidFilePath()
+			if pid, err := readPID(pidPath); err == nil && isProcessRunning(pid) {
+				return fmt.Errorf("agent is already running (PID %d)", pid)
+			}
+
 			cfgPath := config.DefaultAgentConfigPath()
 			cfg, err := config.LoadAgentConfig(cfgPath)
 			if err != nil {
@@ -291,31 +333,69 @@ func stopCmd() *cobra.Command {
 // ── status ─────────────────────────────────────────────────────────────────
 
 func statusCmd() *cobra.Command {
-	return &cobra.Command{
+	var flagJSON bool
+
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Show agent status",
 		Run: func(cmd *cobra.Command, args []string) {
+			cfg, _ := config.LoadAgentConfig(config.DefaultAgentConfigPath())
+			if cfg == nil {
+				cfg = &config.AgentConfig{ServerAddr: "localhost:50051"}
+			}
+
 			pidPath := pidFilePath()
-			pid, err := readPID(pidPath)
-			if err != nil {
-				_, _ = fmt.Fprintln(os.Stdout, "Status: stopped (no PID file)")
+			pid, pidErr := readPID(pidPath)
+
+			running := pidErr == nil && isProcessRunning(pid)
+			var uptime string
+			if running {
+				if info, err := os.Stat(pidPath); err == nil {
+					uptime = formatUptime(time.Since(info.ModTime()))
+				}
+			}
+
+			out := cmd.OutOrStdout()
+
+			if flagJSON {
+				s := agentStatus{
+					Server:   cfg.ServerAddr,
+					NodeID:   cfg.NodeID,
+					NodeName: cfg.NodeName,
+				}
+				if running {
+					s.Status = "running"
+					s.PID = pid
+					s.Uptime = uptime
+				} else {
+					s.Status = "stopped"
+				}
+				enc := json.NewEncoder(out)
+				enc.SetIndent("", "  ")
+				_ = enc.Encode(s)
 				return
 			}
 
-			if !isProcessRunning(pid) {
-				_, _ = fmt.Fprintf(os.Stdout, "Status: stopped (stale PID %d)\n", pid)
-				return
-			}
-
-			info, statErr := os.Stat(pidPath)
-			if statErr == nil {
-				uptime := time.Since(info.ModTime()).Truncate(time.Second)
-				_, _ = fmt.Fprintf(os.Stdout, "Status: running (pid %d, uptime %s)\n", pid, uptime)
+			if running {
+				_, _ = fmt.Fprintf(out, "Status:     running\n")
+				_, _ = fmt.Fprintf(out, "PID:        %d\n", pid)
+				_, _ = fmt.Fprintf(out, "Server:     %s\n", cfg.ServerAddr)
+				_, _ = fmt.Fprintf(out, "Node ID:    %s\n", cfg.NodeID)
+				_, _ = fmt.Fprintf(out, "Node Name:  %s\n", cfg.NodeName)
+				if uptime != "" {
+					_, _ = fmt.Fprintf(out, "Uptime:     %s\n", uptime)
+				}
 			} else {
-				_, _ = fmt.Fprintf(os.Stdout, "Status: running (pid %d)\n", pid)
+				_, _ = fmt.Fprintf(out, "Status:     stopped\n")
+				_, _ = fmt.Fprintf(out, "Server:     %s\n", cfg.ServerAddr)
+				_, _ = fmt.Fprintf(out, "Node ID:    %s\n", cfg.NodeID)
+				_, _ = fmt.Fprintf(out, "Node Name:  %s\n", cfg.NodeName)
 			}
 		},
 	}
+
+	cmd.Flags().BoolVar(&flagJSON, "json", false, "Output as JSON")
+	return cmd
 }
 
 // ── config ─────────────────────────────────────────────────────────────────
