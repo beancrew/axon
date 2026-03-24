@@ -119,6 +119,13 @@ func SaveAgentConfig(path string, cfg *AgentConfig) error {
 	return saveYAML(path, cfg)
 }
 
+// SaveCLIConfig writes the CLI configuration to the given path, creating
+// parent directories as needed. The file is created with mode 0600 to protect
+// the token.
+func SaveCLIConfig(path string, cfg *CLIConfig) error {
+	return saveYAML(path, cfg)
+}
+
 // saveYAML marshals src to YAML and writes it to path, creating parent
 // directories with mode 0700 and the file with mode 0600.
 func saveYAML(path string, src any) error {

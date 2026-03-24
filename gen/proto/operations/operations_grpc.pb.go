@@ -234,3 +234,113 @@ var OperationsService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "operations.proto",
 }
+
+const (
+	AgentOpsService_HandleTask_FullMethodName = "/axon.operations.AgentOpsService/HandleTask"
+)
+
+// AgentOpsServiceClient is the client API for AgentOpsService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// AgentOpsService is called by agents to fulfill dispatched tasks.
+// Each agent opens a HandleTask stream after receiving a TaskSignal
+// on the control plane.
+type AgentOpsServiceClient interface {
+	// Bidirectional stream for task execution.
+	// Agent sends task_id in first message, then streams results.
+	// Server sends task request, then relays CLI data (for write/forward).
+	HandleTask(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TaskDataUp, TaskDataDown], error)
+}
+
+type agentOpsServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewAgentOpsServiceClient(cc grpc.ClientConnInterface) AgentOpsServiceClient {
+	return &agentOpsServiceClient{cc}
+}
+
+func (c *agentOpsServiceClient) HandleTask(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TaskDataUp, TaskDataDown], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &AgentOpsService_ServiceDesc.Streams[0], AgentOpsService_HandleTask_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[TaskDataUp, TaskDataDown]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentOpsService_HandleTaskClient = grpc.BidiStreamingClient[TaskDataUp, TaskDataDown]
+
+// AgentOpsServiceServer is the server API for AgentOpsService service.
+// All implementations must embed UnimplementedAgentOpsServiceServer
+// for forward compatibility.
+//
+// AgentOpsService is called by agents to fulfill dispatched tasks.
+// Each agent opens a HandleTask stream after receiving a TaskSignal
+// on the control plane.
+type AgentOpsServiceServer interface {
+	// Bidirectional stream for task execution.
+	// Agent sends task_id in first message, then streams results.
+	// Server sends task request, then relays CLI data (for write/forward).
+	HandleTask(grpc.BidiStreamingServer[TaskDataUp, TaskDataDown]) error
+	mustEmbedUnimplementedAgentOpsServiceServer()
+}
+
+// UnimplementedAgentOpsServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedAgentOpsServiceServer struct{}
+
+func (UnimplementedAgentOpsServiceServer) HandleTask(grpc.BidiStreamingServer[TaskDataUp, TaskDataDown]) error {
+	return status.Error(codes.Unimplemented, "method HandleTask not implemented")
+}
+func (UnimplementedAgentOpsServiceServer) mustEmbedUnimplementedAgentOpsServiceServer() {}
+func (UnimplementedAgentOpsServiceServer) testEmbeddedByValue()                         {}
+
+// UnsafeAgentOpsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AgentOpsServiceServer will
+// result in compilation errors.
+type UnsafeAgentOpsServiceServer interface {
+	mustEmbedUnimplementedAgentOpsServiceServer()
+}
+
+func RegisterAgentOpsServiceServer(s grpc.ServiceRegistrar, srv AgentOpsServiceServer) {
+	// If the following call panics, it indicates UnimplementedAgentOpsServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&AgentOpsService_ServiceDesc, srv)
+}
+
+func _AgentOpsService_HandleTask_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AgentOpsServiceServer).HandleTask(&grpc.GenericServerStream[TaskDataUp, TaskDataDown]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentOpsService_HandleTaskServer = grpc.BidiStreamingServer[TaskDataUp, TaskDataDown]
+
+// AgentOpsService_ServiceDesc is the grpc.ServiceDesc for AgentOpsService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var AgentOpsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "axon.operations.AgentOpsService",
+	HandlerType: (*AgentOpsServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "HandleTask",
+			Handler:       _AgentOpsService_HandleTask_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "operations.proto",
+}
