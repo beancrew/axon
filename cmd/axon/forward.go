@@ -40,15 +40,8 @@ func forwardCmd() *cobra.Command {
 			}
 			defer closer()
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer cancel()
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			go func() {
-				<-sigCh
-				cancel()
-			}()
 
 			listenAddr := fmt.Sprintf("%s:%d", bindAddr, localPort)
 			listener, err := net.Listen("tcp", listenAddr)

@@ -236,6 +236,9 @@ func truncate(s string, maxLen int) string {
 }
 
 func formatDuration(seconds int64) string {
+	if seconds <= 0 {
+		return "0m"
+	}
 	d := time.Duration(seconds) * time.Second
 	days := int(d.Hours()) / 24
 	hours := int(d.Hours()) % 24

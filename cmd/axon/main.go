@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/garysng/axon/pkg/config"
+	"github.com/garysng/axon/pkg/display"
 )
 
 // version is set at build time via -ldflags.
@@ -54,7 +55,7 @@ func versionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print version info",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("axon %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "axon %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		},
 	}
 }
@@ -86,7 +87,7 @@ func configGetCmd() *cobra.Command {
 			case "server":
 				fmt.Println(cfg.ServerAddr)
 			case "token":
-				fmt.Println(maskToken(cfg.Token))
+				fmt.Println(display.MaskToken(cfg.Token))
 			case "output_format":
 				fmt.Println(cfg.OutputFormat)
 			default:
@@ -97,16 +98,6 @@ func configGetCmd() *cobra.Command {
 	}
 }
 
-// maskToken returns a masked version of a token for display (e.g. "eyJhbG...4F0").
-func maskToken(token string) string {
-	if token == "" {
-		return "(not set)"
-	}
-	if len(token) < 12 {
-		return "***"
-	}
-	return token[:6] + "..." + token[len(token)-3:]
-}
 
 func configSetCmd() *cobra.Command {
 	return &cobra.Command{
@@ -134,7 +125,7 @@ func configSetCmd() *cobra.Command {
 			if err := config.SaveCLIConfig(cfgPath, cfg); err != nil {
 				return fmt.Errorf("save config: %w", err)
 			}
-			fmt.Printf("Set %s = %s\n", key, value)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Set %s = %s\n", key, value)
 			return nil
 		},
 	}

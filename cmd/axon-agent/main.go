@@ -19,6 +19,7 @@ import (
 
 	"github.com/garysng/axon/internal/agent"
 	"github.com/garysng/axon/pkg/config"
+	"github.com/garysng/axon/pkg/display"
 )
 
 // version is set at build time via -ldflags.
@@ -95,17 +96,6 @@ func isProcessRunning(pid int) bool {
 		return false
 	}
 	return proc.Signal(syscall.Signal(0)) == nil
-}
-
-// maskToken returns a masked version of a token for display.
-func maskToken(token string) string {
-	if token == "" {
-		return "(not set)"
-	}
-	if len(token) < 12 {
-		return "***"
-	}
-	return token[:6] + "..." + token[len(token)-3:]
 }
 
 // agentStatus is the JSON-serialisable representation of the status command
@@ -425,7 +415,7 @@ func agentConfigGetCmd() *cobra.Command {
 			case "server":
 				_, _ = fmt.Fprintln(os.Stdout, cfg.ServerAddr)
 			case "token":
-				_, _ = fmt.Fprintln(os.Stdout, maskToken(cfg.Token))
+				_, _ = fmt.Fprintln(os.Stdout, display.MaskToken(cfg.Token))
 			case "name":
 				_, _ = fmt.Fprintln(os.Stdout, cfg.NodeName)
 			default:

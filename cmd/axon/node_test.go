@@ -5,6 +5,7 @@ import (
 	"time"
 
 	managementpb "github.com/garysng/axon/gen/proto/management"
+	"github.com/garysng/axon/pkg/display"
 )
 
 func TestFilterByStatus(t *testing.T) {
@@ -133,9 +134,9 @@ func TestMaskToken(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := maskToken(tt.token)
+		got := display.MaskToken(tt.token)
 		if got != tt.want {
-			t.Errorf("maskToken(%q) = %q, want %q", tt.token, got, tt.want)
+			t.Errorf("display.MaskToken(%q) = %q, want %q", tt.token, got, tt.want)
 		}
 	}
 }

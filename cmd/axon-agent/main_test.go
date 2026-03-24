@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/garysng/axon/pkg/display"
 )
 
 // ── writePID / readPID ──────────────────────────────────────────────────────
@@ -75,9 +77,9 @@ func TestMaskToken(t *testing.T) {
 		{"abcdefghijklmnopqrs", "abcdef...qrs"}, // normal length
 	}
 	for _, tc := range tests {
-		got := maskToken(tc.input)
+		got := display.MaskToken(tc.input)
 		if got != tc.want {
-			t.Errorf("maskToken(%q) = %q, want %q", tc.input, got, tc.want)
+			t.Errorf("display.MaskToken(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }

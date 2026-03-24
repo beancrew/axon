@@ -48,16 +48,8 @@ func execCmd() *cobra.Command {
 				envMap[k] = v
 			}
 
-			// Create cancellable context for Ctrl+C handling.
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer cancel()
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			go func() {
-				<-sigCh
-				cancel()
-			}()
 
 			stream, err := client.Exec(ctx, &operationspb.ExecRequest{
 				NodeId:         nodeID,
@@ -105,7 +97,7 @@ func execCmd() *cobra.Command {
 	}
 
 	cmd.Flags().Int32Var(&timeout, "timeout", 0, "kill command after timeout seconds (0 = no timeout)")
-	cmd.Flags().StringArrayVar(&envVars, "env", nil, "set environment variable (KEY=VALUE, repeatable)")
+	cmd.Flags().StringArrayVar(&envVars, "env", nil, "set environment variable (KEY=VALUE, repeatable, e.g. --env FOO=bar --env BAZ=qux)")
 	cmd.Flags().StringVar(&workdir, "workdir", "", "set working directory on remote node")
 	return cmd
 }
