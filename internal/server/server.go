@@ -33,11 +33,13 @@ type ServerConfig struct {
 
 // Server wraps a gRPC server with its dependencies.
 type Server struct {
-	cfg         ServerConfig
-	grpc        *grpc.Server
-	registry    *registry.Registry
-	control     *ControlService
-	auditWriter *audit.Writer
+	cfg          ServerConfig
+	grpc         *grpc.Server
+	registry     *registry.Registry
+	control      *ControlService
+	auditWriter  *audit.Writer
+	tokenStore   *auth.TokenStore
+	tokenChecker *auth.TokenChecker
 }
 
 // NewServer creates a new Server with the given configuration.
@@ -59,16 +61,29 @@ func (s *Server) Start(ctx context.Context) error {
 // serve is the internal implementation shared by Start and test helpers
 // that supply their own net.Listener (e.g. bufconn).
 func (s *Server) serve(ctx context.Context, lis net.Listener) error {
-	opts, err := s.buildServerOptions()
-	if err != nil {
-		return err
-	}
-
-	s.grpc = grpc.NewServer(opts...)
-
 	// Build registry and control service.
 	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
 	s.control = newControlService(s.registry, s.cfg)
+
+	// Initialize token management (store + in-memory revocation checker).
+	tokenStore, err := auth.NewTokenStore(":memory:")
+	if err != nil {
+		return fmt.Errorf("server: init token store: %w", err)
+	}
+	s.tokenStore = tokenStore
+
+	tokenChecker, err := auth.NewTokenChecker(tokenStore)
+	if err != nil {
+		return fmt.Errorf("server: init token checker: %w", err)
+	}
+	s.tokenChecker = tokenChecker
+
+	// Build gRPC server with interceptors that check revoked tokens.
+	opts, err := s.buildServerOptions(tokenChecker)
+	if err != nil {
+		return err
+	}
+	s.grpc = grpc.NewServer(opts...)
 
 	// Initialize audit.
 	auditDBPath := s.cfg.AuditDBPath
@@ -86,7 +101,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret)
+	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
@@ -117,6 +132,9 @@ func (s *Server) GracefulStop() {
 	if s.auditWriter != nil {
 		_ = s.auditWriter.Close()
 	}
+	if s.tokenStore != nil {
+		_ = s.tokenStore.Close()
+	}
 }
 
 // Registry returns the node registry used by this server.
@@ -125,8 +143,8 @@ func (s *Server) Registry() *registry.Registry {
 }
 
 // buildServerOptions constructs the gRPC server options, including TLS and auth
-// interceptors.
-func (s *Server) buildServerOptions() ([]grpc.ServerOption, error) {
+// interceptors. When checker is non-nil, revoked tokens are rejected.
+func (s *Server) buildServerOptions(checker *auth.TokenChecker) ([]grpc.ServerOption, error) {
 	var opts []grpc.ServerOption
 
 	// TLS is optional; only enabled when both cert and key paths are provided.
@@ -144,19 +162,19 @@ func (s *Server) buildServerOptions() ([]grpc.ServerOption, error) {
 
 	// The ControlService/Connect stream handles its own token validation, and
 	// ManagementService/Login is the unauthenticated entry point. All other
-	// methods require a valid JWT.
+	// methods require a valid JWT (with revocation check when checker != nil).
 	opts = append(opts,
-		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret)),
-		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret)),
+		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret, checker)),
+		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret, checker)),
 	)
 
 	return opts, nil
 }
 
-// skipLoginUnaryInterceptor wraps auth.UnaryInterceptor but bypasses JWT auth
-// for ManagementService/Login (which is the unauthenticated login endpoint).
-func skipLoginUnaryInterceptor(secret string) grpc.UnaryServerInterceptor {
-	inner := auth.UnaryInterceptor(secret)
+// skipLoginUnaryInterceptor wraps auth.UnaryInterceptorWithChecker but bypasses
+// JWT auth for ManagementService/Login (which is the unauthenticated login endpoint).
+func skipLoginUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.UnaryServerInterceptor {
+	inner := auth.UnaryInterceptorWithChecker(secret, checker)
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -170,11 +188,11 @@ func skipLoginUnaryInterceptor(secret string) grpc.UnaryServerInterceptor {
 	}
 }
 
-// skipConnectStreamInterceptor wraps auth.StreamInterceptor but bypasses JWT
-// auth for the ControlService/Connect method (which validates its own token
-// inside the handler).
-func skipConnectStreamInterceptor(secret string) grpc.StreamServerInterceptor {
-	inner := auth.StreamInterceptor(secret)
+// skipConnectStreamInterceptor wraps auth.StreamInterceptorWithChecker but
+// bypasses JWT auth for the ControlService/Connect method (which validates its
+// own token inside the handler).
+func skipConnectStreamInterceptor(secret string, checker *auth.TokenChecker) grpc.StreamServerInterceptor {
+	inner := auth.StreamInterceptorWithChecker(secret, checker)
 	return func(
 		srv interface{},
 		ss grpc.ServerStream,

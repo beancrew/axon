@@ -117,7 +117,7 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 	_ = srvErrCh
 
 	// Build agent config.
-	agentToken, err := auth.SignAgentToken(opts.jwtSecret, "integration-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(opts.jwtSecret, "integration-node", time.Hour)
 	if err != nil {
 		cancel()
 		t.Fatalf("harness: sign agent token: %v", err)
@@ -224,7 +224,7 @@ func (h *Harness) CLIConn() *grpc.ClientConn {
 func (h *Harness) CLIConnWithAccess(nodeIDs ...string) *grpc.ClientConn {
 	h.t.Helper()
 
-	token, err := auth.SignCLIToken(h.opts.jwtSecret, "test-user", nodeIDs, time.Hour)
+	token, _, err := auth.SignCLIToken(h.opts.jwtSecret, "test-user", nodeIDs, time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign CLI token: %v", err)
 	}
@@ -272,7 +272,7 @@ func (h *Harness) UnauthConn() *grpc.ClientConn {
 func (h *Harness) ConnectAgent(name string) (*agent.Agent, string) {
 	h.t.Helper()
 
-	agentToken, err := auth.SignAgentToken(h.opts.jwtSecret, "extra-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(h.opts.jwtSecret, "extra-node", time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign agent token: %v", err)
 	}
@@ -334,7 +334,7 @@ func (h *Harness) ConnectAgentWithToken(name, token string) (*agent.Agent, strin
 func (h *Harness) ConnectAgentWithHandler(name string, handler agent.TaskHandler) (*agent.Agent, string) {
 	h.t.Helper()
 
-	agentToken, err := auth.SignAgentToken(h.opts.jwtSecret, "task-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(h.opts.jwtSecret, "task-node", time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign agent token: %v", err)
 	}

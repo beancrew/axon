@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // TokenKind identifies the type of JWT token.
@@ -26,33 +27,42 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// SignCLIToken creates a signed JWT for a CLI client that can access the given nodes.
-func SignCLIToken(secret, userID string, nodeIDs []string, expiry time.Duration) (string, error) {
+// SignCLIToken creates a signed JWT for a CLI client that can access the given
+// nodes. It returns the token string, the JTI (JWT ID) used as the unique
+// token identifier, and any error.
+func SignCLIToken(secret, userID string, nodeIDs []string, expiry time.Duration) (string, string, error) {
 	now := time.Now()
+	jti := uuid.NewString()
 	claims := Claims{
 		UserID:  userID,
 		NodeIDs: nodeIDs,
 		Kind:    KindCLI,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
 		},
 	}
-	return signToken(secret, claims)
+	tok, err := signToken(secret, claims)
+	return tok, jti, err
 }
 
-// SignAgentToken creates a signed JWT for an agent node.
-func SignAgentToken(secret, nodeID string, expiry time.Duration) (string, error) {
+// SignAgentToken creates a signed JWT for an agent node. It returns the token
+// string, the JTI used as the unique token identifier, and any error.
+func SignAgentToken(secret, nodeID string, expiry time.Duration) (string, string, error) {
 	now := time.Now()
+	jti := uuid.NewString()
 	claims := Claims{
 		NodeID: nodeID,
 		Kind:   KindAgent,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
 		},
 	}
-	return signToken(secret, claims)
+	tok, err := signToken(secret, claims)
+	return tok, jti, err
 }
 
 func signToken(secret string, claims Claims) (string, error) {

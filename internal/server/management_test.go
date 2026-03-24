@@ -76,7 +76,7 @@ func newFullTestEnv(t *testing.T, users []UserEntry) *fullTestEnv {
 // authedCtx adds a valid CLI JWT as gRPC authorization metadata.
 func authedCtx(t *testing.T, userID string, nodeIDs []string) context.Context {
 	t.Helper()
-	tok, err := auth.SignCLIToken(testSecret, userID, nodeIDs, time.Hour)
+	tok, _, err := auth.SignCLIToken(testSecret, userID, nodeIDs, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken: %v", err)
 	}

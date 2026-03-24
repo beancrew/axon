@@ -25,15 +25,23 @@ type UserEntry struct {
 // ManagementService implements managementpb.ManagementServiceServer.
 type ManagementService struct {
 	managementpb.UnimplementedManagementServiceServer
-	reg    *registry.Registry
-	users  []UserEntry
-	secret string
+	reg          *registry.Registry
+	users        []UserEntry
+	secret       string
+	tokenStore   *auth.TokenStore
+	tokenChecker *auth.TokenChecker
 }
 
 var _ managementpb.ManagementServiceServer = (*ManagementService)(nil)
 
-func newManagementService(reg *registry.Registry, users []UserEntry, secret string) *ManagementService {
-	return &ManagementService{reg: reg, users: users, secret: secret}
+func newManagementService(reg *registry.Registry, users []UserEntry, secret string, tokenStore *auth.TokenStore, tokenChecker *auth.TokenChecker) *ManagementService {
+	return &ManagementService{
+		reg:          reg,
+		users:        users,
+		secret:       secret,
+		tokenStore:   tokenStore,
+		tokenChecker: tokenChecker,
+	}
 }
 
 // ListNodes returns a summary of all nodes in the registry.
@@ -82,13 +90,25 @@ func (s *ManagementService) Login(_ context.Context, req *managementpb.LoginRequ
 			return &managementpb.LoginResponse{Error: "invalid credentials"}, nil
 		}
 		const tokenExpiry = 24 * time.Hour
-		tok, err := auth.SignCLIToken(s.secret, u.Username, u.NodeIDs, tokenExpiry)
+		now := time.Now()
+		tok, jti, err := auth.SignCLIToken(s.secret, u.Username, u.NodeIDs, tokenExpiry)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "management: sign token: %v", err)
 		}
+		// Persist the issued token so it can be listed and revoked.
+		if s.tokenStore != nil {
+			_ = s.tokenStore.Insert(&auth.TokenEntry{
+				ID:        jti,
+				Kind:      string(auth.KindCLI),
+				UserID:    u.Username,
+				NodeIDs:   u.NodeIDs,
+				IssuedAt:  now.Unix(),
+				ExpiresAt: now.Add(tokenExpiry).Unix(),
+			})
+		}
 		return &managementpb.LoginResponse{
 			Token:     tok,
-			ExpiresAt: time.Now().Add(tokenExpiry).Unix(),
+			ExpiresAt: now.Add(tokenExpiry).Unix(),
 		}, nil
 	}
 	return &managementpb.LoginResponse{Error: "invalid credentials"}, nil
@@ -107,6 +127,57 @@ func entryToSummary(e *registry.NodeEntry) *managementpb.NodeSummary {
 		LastHeartbeat: e.LastHeartbeat.Unix(),
 		OsInfo:        osInfoToProto(&e.Info.OSInfo),
 	}
+}
+
+// RevokeToken revokes a previously issued JWT by its JTI.
+func (s *ManagementService) RevokeToken(ctx context.Context, req *managementpb.RevokeTokenRequest) (*managementpb.RevokeTokenResponse, error) {
+	if s.tokenStore == nil {
+		return &managementpb.RevokeTokenResponse{Error: "token management not enabled"}, nil
+	}
+	if req.GetTokenId() == "" {
+		return &managementpb.RevokeTokenResponse{Error: "token_id is required"}, nil
+	}
+
+	claims, _ := auth.ClaimsFromContext(ctx)
+	revokedBy := ""
+	if claims != nil {
+		revokedBy = claims.UserID
+	}
+
+	if err := s.tokenStore.Revoke(req.GetTokenId(), revokedBy); err != nil {
+		return &managementpb.RevokeTokenResponse{Error: err.Error()}, nil
+	}
+
+	if s.tokenChecker != nil {
+		s.tokenChecker.MarkRevoked(req.GetTokenId())
+	}
+
+	return &managementpb.RevokeTokenResponse{Success: true}, nil
+}
+
+// ListTokens returns active (non-revoked, non-expired) tokens.
+func (s *ManagementService) ListTokens(_ context.Context, req *managementpb.ListTokensRequest) (*managementpb.ListTokensResponse, error) {
+	if s.tokenStore == nil {
+		return &managementpb.ListTokensResponse{}, nil
+	}
+
+	entries, err := s.tokenStore.List(req.GetKind())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "management: list tokens: %v", err)
+	}
+
+	tokens := make([]*managementpb.TokenInfo, 0, len(entries))
+	for _, e := range entries {
+		tokens = append(tokens, &managementpb.TokenInfo{
+			Id:        e.ID,
+			Kind:      e.Kind,
+			UserId:    e.UserID,
+			IssuedAt:  e.IssuedAt,
+			ExpiresAt: e.ExpiresAt,
+		})
+	}
+
+	return &managementpb.ListTokensResponse{Tokens: tokens}, nil
 }
 
 // osInfoToProto converts a registry.OSInfo to a controlpb.OSInfo.

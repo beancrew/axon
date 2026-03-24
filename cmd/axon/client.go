@@ -56,6 +56,11 @@ func dialServer(withAuth bool) (managementpb.ManagementServiceClient, func(), er
 	return managementpb.NewManagementServiceClient(conn), closer, nil
 }
 
+// dialManagement creates an authenticated gRPC connection and returns a ManagementServiceClient.
+func dialManagement() (managementpb.ManagementServiceClient, func(), error) {
+	return dialServer(true)
+}
+
 // dialOperations creates a gRPC connection and returns an OperationsServiceClient.
 func dialOperations() (operationspb.OperationsServiceClient, func(), error) {
 	conn, closer, err := dialConn(true)

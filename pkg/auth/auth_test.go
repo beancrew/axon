@@ -17,7 +17,7 @@ const testSecret = "super-secret-key-for-testing"
 
 func TestSignCLIToken_RoundTrip(t *testing.T) {
 	nodeIDs := []string{"node-1", "node-2"}
-	tok, err := SignCLIToken(testSecret, "user-42", nodeIDs, time.Hour)
+	tok, _, err := SignCLIToken(testSecret, "user-42", nodeIDs, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestSignCLIToken_RoundTrip(t *testing.T) {
 }
 
 func TestSignAgentToken_RoundTrip(t *testing.T) {
-	tok, err := SignAgentToken(testSecret, "node-99", time.Hour)
+	tok, _, err := SignAgentToken(testSecret, "node-99", time.Hour)
 	if err != nil {
 		t.Fatalf("SignAgentToken error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestSignAgentToken_RoundTrip(t *testing.T) {
 // ---- expired token ----
 
 func TestValidateToken_Expired(t *testing.T) {
-	tok, err := SignCLIToken(testSecret, "user-1", nil, -time.Second)
+	tok, _, err := SignCLIToken(testSecret, "user-1", nil, -time.Second)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestValidateToken_Expired(t *testing.T) {
 // ---- invalid signature ----
 
 func TestValidateToken_InvalidSignature(t *testing.T) {
-	tok, err := SignCLIToken(testSecret, "user-1", nil, time.Hour)
+	tok, _, err := SignCLIToken(testSecret, "user-1", nil, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestValidateToken_Malformed(t *testing.T) {
 // ---- HasNodeAccess ----
 
 func TestHasNodeAccess_CLIToken(t *testing.T) {
-	tok, err := SignCLIToken(testSecret, "user-1", []string{"node-a", "node-b"}, time.Hour)
+	tok, _, err := SignCLIToken(testSecret, "user-1", []string{"node-a", "node-b"}, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestHasNodeAccess_CLIToken(t *testing.T) {
 }
 
 func TestHasNodeAccess_AgentToken(t *testing.T) {
-	tok, err := SignAgentToken(testSecret, "node-x", time.Hour)
+	tok, _, err := SignAgentToken(testSecret, "node-x", time.Hour)
 	if err != nil {
 		t.Fatalf("SignAgentToken error: %v", err)
 	}
@@ -170,7 +170,7 @@ func dummyUnaryHandler(ctx context.Context, _ interface{}) (interface{}, error) 
 }
 
 func TestUnaryInterceptor_ValidToken(t *testing.T) {
-	tok, _ := SignCLIToken(testSecret, "u1", []string{"n1"}, time.Hour)
+	tok, _, _ := SignCLIToken(testSecret, "u1", []string{"n1"}, time.Hour)
 	ctx := makeUnaryCtx(tok)
 
 	interceptor := UnaryInterceptor(testSecret)
@@ -227,7 +227,7 @@ func TestUnaryInterceptor_InvalidToken(t *testing.T) {
 }
 
 func TestUnaryInterceptor_ExpiredToken(t *testing.T) {
-	tok, _ := SignCLIToken(testSecret, "u1", nil, -time.Second)
+	tok, _, _ := SignCLIToken(testSecret, "u1", nil, -time.Second)
 	ctx := makeUnaryCtx(tok)
 
 	interceptor := UnaryInterceptor(testSecret)
@@ -250,7 +250,7 @@ type mockServerStream struct {
 func (m *mockServerStream) Context() context.Context { return m.ctx }
 
 func TestStreamInterceptor_ValidToken(t *testing.T) {
-	tok, _ := SignAgentToken(testSecret, "node-z", time.Hour)
+	tok, _, _ := SignAgentToken(testSecret, "node-z", time.Hour)
 	md := metadata.Pairs("authorization", "Bearer "+tok)
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 	stream := &mockServerStream{ctx: ctx}
@@ -295,7 +295,7 @@ func TestStreamInterceptor_InvalidToken(t *testing.T) {
 // ---- Wildcard Access ----
 
 func TestHasNodeAccess_Wildcard(t *testing.T) {
-	tok, err := SignCLIToken(testSecret, "admin", []string{"*"}, time.Hour)
+	tok, _, err := SignCLIToken(testSecret, "admin", []string{"*"}, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestHasNodeAccess_Wildcard(t *testing.T) {
 }
 
 func TestHasNodeAccess_WildcardMixed(t *testing.T) {
-	tok, err := SignCLIToken(testSecret, "user", []string{"node-a", "*"}, time.Hour)
+	tok, _, err := SignCLIToken(testSecret, "user", []string{"node-a", "*"}, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken error: %v", err)
 	}
