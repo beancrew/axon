@@ -5,17 +5,17 @@ import (
 	"fmt"
 
 	managementpb "github.com/garysng/axon/gen/proto/management"
+	operationspb "github.com/garysng/axon/gen/proto/operations"
 	"github.com/garysng/axon/pkg/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
 
-// dialServer creates a gRPC connection to the Axon server using CLI config.
-// It returns the ManagementServiceClient, a close function, and any error.
-// If withAuth is true, the connection includes the JWT token from config as
-// bearer metadata on every RPC.
-func dialServer(withAuth bool) (managementpb.ManagementServiceClient, func(), error) {
+// dialConn creates a gRPC connection to the Axon server using CLI config.
+// If withAuth is true, the connection includes the JWT token as bearer metadata.
+// Returns the connection, a close function, and any error.
+func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 	cfg, err := config.LoadCLIConfig(config.DefaultCLIConfigPath())
 	if err != nil {
 		return nil, nil, fmt.Errorf("load config: %w", err)
@@ -43,9 +43,26 @@ func dialServer(withAuth bool) (managementpb.ManagementServiceClient, func(), er
 		return nil, nil, fmt.Errorf("connect to server %q: %w", cfg.ServerAddr, err)
 	}
 
-	client := managementpb.NewManagementServiceClient(conn)
 	closer := func() { _ = conn.Close() }
-	return client, closer, nil
+	return conn, closer, nil
+}
+
+// dialServer creates a gRPC connection and returns a ManagementServiceClient.
+func dialServer(withAuth bool) (managementpb.ManagementServiceClient, func(), error) {
+	conn, closer, err := dialConn(withAuth)
+	if err != nil {
+		return nil, nil, err
+	}
+	return managementpb.NewManagementServiceClient(conn), closer, nil
+}
+
+// dialOperations creates a gRPC connection and returns an OperationsServiceClient.
+func dialOperations() (operationspb.OperationsServiceClient, func(), error) {
+	conn, closer, err := dialConn(true)
+	if err != nil {
+		return nil, nil, err
+	}
+	return operationspb.NewOperationsServiceClient(conn), closer, nil
 }
 
 // bearerUnaryInterceptor returns a unary client interceptor that attaches
