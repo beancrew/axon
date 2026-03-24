@@ -58,7 +58,7 @@ func (d *Dispatcher) HandleTask(ctx context.Context, taskID string, taskType con
 	case controlpb.TaskType_TASK_EXEC:
 		d.handleExec(ctx, stream, msg, taskID)
 	case controlpb.TaskType_TASK_READ:
-		d.handleRead(stream, msg, taskID)
+		d.handleRead(ctx, stream, msg, taskID)
 	case controlpb.TaskType_TASK_WRITE:
 		d.handleWrite(stream, msg, taskID)
 	case controlpb.TaskType_TASK_FORWARD:
@@ -85,7 +85,7 @@ func (d *Dispatcher) handleExec(ctx context.Context, stream grpc.BidiStreamingCl
 	})
 }
 
-func (d *Dispatcher) handleRead(stream grpc.BidiStreamingClient[operationspb.TaskDataUp, operationspb.TaskDataDown], msg *operationspb.TaskDataDown, taskID string) {
+func (d *Dispatcher) handleRead(ctx context.Context, stream grpc.BidiStreamingClient[operationspb.TaskDataUp, operationspb.TaskDataDown], msg *operationspb.TaskDataDown, taskID string) {
 	req := msg.GetReadRequest()
 	if req == nil {
 		log.Printf("dispatcher: task %s: expected ReadRequest", taskID)
@@ -93,6 +93,10 @@ func (d *Dispatcher) handleRead(stream grpc.BidiStreamingClient[operationspb.Tas
 	}
 
 	d.fileH.HandleRead(req, func(out *operationspb.ReadOutput) error {
+		// Check for cancellation before each send.
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return stream.Send(&operationspb.TaskDataUp{
 			TaskId:  taskID,
 			Payload: &operationspb.TaskDataUp_ReadOutput{ReadOutput: out},

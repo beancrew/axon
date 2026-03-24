@@ -87,12 +87,14 @@ func (b *taskBridge) Remove(taskID string) {
 // WaitAttach blocks until the Agent attaches to the slot, the context is
 // cancelled, or the timeout expires.
 func (b *taskBridge) WaitAttach(ctx context.Context, slot *bridgeSlot, timeout time.Duration) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case <-slot.attached:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(timeout):
+	case <-timer.C:
 		return fmt.Errorf("agent did not respond within %s", timeout)
 	}
 }

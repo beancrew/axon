@@ -2,6 +2,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -73,7 +74,10 @@ func (s *OperationsService) Exec(req *operationspb.ExecRequest, stream grpc.Serv
 	// Relay Agent output to CLI.
 	for {
 		select {
-		case msg := <-slot.up:
+		case msg, ok := <-slot.up:
+			if !ok {
+				return nil
+			}
 			if out := msg.GetExecOutput(); out != nil {
 				if err := stream.Send(out); err != nil {
 					return err
@@ -122,15 +126,21 @@ func (s *OperationsService) Read(req *operationspb.ReadRequest, stream grpc.Serv
 
 	s.logAudit(claims, entry.NodeID, audit.OperationRead, req.GetPath(), audit.StatusSuccess)
 
-	// Relay Agent output to CLI.
+	// Relay Agent output to CLI. The loop terminates when:
+	// - Agent sends an error message
+	// - Agent closes its stream (slot.up is closed by agent_ops)
+	// - Task is done or context is cancelled
 	for {
 		select {
-		case msg := <-slot.up:
+		case msg, ok := <-slot.up:
+			if !ok {
+				// Agent closed stream — read complete.
+				return nil
+			}
 			if out := msg.GetReadOutput(); out != nil {
 				if err := stream.Send(out); err != nil {
 					return err
 				}
-				// Read completes on error message or when Agent closes.
 				if out.GetError() != "" {
 					return nil
 				}
@@ -185,7 +195,9 @@ func (s *OperationsService) Write(stream grpc.ClientStreamingServer[operationspb
 	s.logAudit(claims, entry.NodeID, audit.OperationWrite, hdr.GetPath(), audit.StatusSuccess)
 
 	// Relay remaining CLI data to Agent.
+	// Close slot.down on EOF so Agent's recvData unblocks.
 	go func() {
+		defer close(slot.down)
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
@@ -209,7 +221,10 @@ func (s *OperationsService) Write(stream grpc.ClientStreamingServer[operationspb
 
 	// Wait for Agent response.
 	select {
-	case msg := <-slot.up:
+	case msg, ok := <-slot.up:
+		if !ok {
+			return status.Error(codes.Internal, "operations: write: agent closed stream without response")
+		}
 		if resp := msg.GetWriteResponse(); resp != nil {
 			return stream.SendAndClose(resp)
 		}
@@ -263,10 +278,14 @@ func (s *OperationsService) Forward(stream grpc.BidiStreamingServer[operationspb
 
 	s.logAudit(claims, entry.NodeID, audit.OperationForward, detail, audit.StatusSuccess)
 
+	fwdCtx, fwdCancel := context.WithCancel(ctx)
+	defer fwdCancel()
+
 	errCh := make(chan error, 2)
 
 	// CLI → Agent: read from CLI stream, put on slot.down.
 	go func() {
+		defer close(slot.down)
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
@@ -285,8 +304,8 @@ func (s *OperationsService) Forward(stream grpc.BidiStreamingServer[operationspb
 			case <-slot.done:
 				errCh <- nil
 				return
-			case <-ctx.Done():
-				errCh <- ctx.Err()
+			case <-fwdCtx.Done():
+				errCh <- fwdCtx.Err()
 				return
 			}
 		}
@@ -296,7 +315,11 @@ func (s *OperationsService) Forward(stream grpc.BidiStreamingServer[operationspb
 	go func() {
 		for {
 			select {
-			case msg := <-slot.up:
+			case msg, ok := <-slot.up:
+				if !ok {
+					errCh <- nil
+					return
+				}
 				if td := msg.GetTunnelData(); td != nil {
 					if err := stream.Send(td); err != nil {
 						errCh <- err
@@ -310,14 +333,16 @@ func (s *OperationsService) Forward(stream grpc.BidiStreamingServer[operationspb
 			case <-slot.done:
 				errCh <- nil
 				return
-			case <-ctx.Done():
-				errCh <- ctx.Err()
+			case <-fwdCtx.Done():
+				errCh <- fwdCtx.Err()
 				return
 			}
 		}
 	}()
 
+	// Wait for first goroutine to finish, cancel the other.
 	err = <-errCh
+	fwdCancel()
 	return err
 }
 

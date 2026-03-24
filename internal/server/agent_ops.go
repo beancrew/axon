@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log"
 
@@ -28,7 +29,8 @@ func newAgentOpsService(bridge *taskBridge) *AgentOpsServiceImpl {
 // First message from Agent must contain task_id for handshake.
 // Server then relays data between the CLI stream and the Agent stream via the bridge.
 func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operationspb.TaskDataUp, operationspb.TaskDataDown]) error {
-	ctx := stream.Context()
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
 
 	// Read first message — handshake with task_id.
 	first, err := stream.Recv()
@@ -62,7 +64,9 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 	errCh := make(chan error, 2)
 
 	// Agent → Server (up): read from Agent stream, put on slot.up.
+	// Close slot.up when Agent finishes sending (EOF) so the CLI relay detects completion.
 	go func() {
+		defer close(slot.up)
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
@@ -89,7 +93,12 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 	go func() {
 		for {
 			select {
-			case msg := <-slot.down:
+			case msg, ok := <-slot.down:
+				if !ok {
+					// CLI done sending (channel closed).
+					errCh <- nil
+					return
+				}
 				if err := stream.Send(msg); err != nil {
 					errCh <- err
 					return
@@ -104,7 +113,8 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 		}
 	}()
 
-	// Wait for either goroutine to finish.
+	// Wait for the first goroutine to finish, then cancel the other.
 	err = <-errCh
+	cancel()
 	return err
 }
