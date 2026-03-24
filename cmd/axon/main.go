@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -15,6 +16,10 @@ var version = "dev"
 
 func main() {
 	if err := rootCmd().Execute(); err != nil {
+		var ee *exitError
+		if errors.As(err, &ee) {
+			os.Exit(ee.code)
+		}
 		os.Exit(1)
 	}
 }
@@ -33,6 +38,10 @@ func rootCmd() *cobra.Command {
 		configCmd(),
 		nodeCmd(),
 		authCmd(),
+		execCmd(),
+		readCmd(),
+		writeCmd(),
+		forwardCmd(),
 	)
 
 	return root
