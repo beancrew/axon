@@ -33,6 +33,8 @@ type Agent struct {
 
 	taskHandler TaskHandler
 
+	dataPlane bool // enable data plane dispatcher
+
 	// dialOverride is an optional gRPC dial option used in tests to replace
 	// the network transport (e.g. with bufconn).
 	dialOverride grpc.DialOption
@@ -63,6 +65,12 @@ func NewAgent(cfg config.AgentConfig, configPath string) *Agent {
 // SetTaskHandler registers a callback for incoming TaskSignal messages.
 func (a *Agent) SetTaskHandler(h TaskHandler) {
 	a.taskHandler = h
+}
+
+// EnableDataPlane enables the agent data plane dispatcher. When enabled,
+// TaskSignals from the server will be handled by opening HandleTask streams.
+func (a *Agent) EnableDataPlane() {
+	a.dataPlane = true
 }
 
 // Run connects to the server and enters the main control loop. It reconnects
@@ -124,6 +132,15 @@ func (a *Agent) runOnce(ctx context.Context) error {
 	}
 
 	log.Printf("agent: registered as %q (id=%s), heartbeat every %s", a.nodeName, a.nodeID, interval)
+
+	// Wire data plane dispatcher if enabled.
+	if a.dataPlane {
+		dispatcher := NewDispatcher(conn)
+		a.SetTaskHandler(func(taskID string, taskType controlpb.TaskType) {
+			dispatcher.HandleTask(ctx, taskID, taskType)
+		})
+		log.Printf("agent: data plane dispatcher enabled")
+	}
 
 	// Start heartbeat sender and message receiver.
 	return a.controlLoop(ctx, stream, interval)

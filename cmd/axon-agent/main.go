@@ -234,6 +234,7 @@ func runForeground(cfg *config.AgentConfig, cfgPath string) error {
 	defer cancel()
 
 	a := agent.NewAgent(*cfg, cfgPath)
+	a.EnableDataPlane()
 	if err := a.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		return fmt.Errorf("agent: %w", err)
 	}

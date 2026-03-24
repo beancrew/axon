@@ -780,6 +780,252 @@ func (x *TunnelOpen) GetRemotePort() int32 {
 	return 0
 }
 
+// Agent → Server (results flowing up)
+type TaskDataUp struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TaskId string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*TaskDataUp_ExecOutput
+	//	*TaskDataUp_ReadOutput
+	//	*TaskDataUp_WriteResponse
+	//	*TaskDataUp_TunnelData
+	Payload       isTaskDataUp_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskDataUp) Reset() {
+	*x = TaskDataUp{}
+	mi := &file_operations_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskDataUp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskDataUp) ProtoMessage() {}
+
+func (x *TaskDataUp) ProtoReflect() protoreflect.Message {
+	mi := &file_operations_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskDataUp.ProtoReflect.Descriptor instead.
+func (*TaskDataUp) Descriptor() ([]byte, []int) {
+	return file_operations_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TaskDataUp) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *TaskDataUp) GetPayload() isTaskDataUp_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *TaskDataUp) GetExecOutput() *ExecOutput {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataUp_ExecOutput); ok {
+			return x.ExecOutput
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataUp) GetReadOutput() *ReadOutput {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataUp_ReadOutput); ok {
+			return x.ReadOutput
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataUp) GetWriteResponse() *WriteResponse {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataUp_WriteResponse); ok {
+			return x.WriteResponse
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataUp) GetTunnelData() *TunnelData {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataUp_TunnelData); ok {
+			return x.TunnelData
+		}
+	}
+	return nil
+}
+
+type isTaskDataUp_Payload interface {
+	isTaskDataUp_Payload()
+}
+
+type TaskDataUp_ExecOutput struct {
+	ExecOutput *ExecOutput `protobuf:"bytes,2,opt,name=exec_output,json=execOutput,proto3,oneof"`
+}
+
+type TaskDataUp_ReadOutput struct {
+	ReadOutput *ReadOutput `protobuf:"bytes,3,opt,name=read_output,json=readOutput,proto3,oneof"`
+}
+
+type TaskDataUp_WriteResponse struct {
+	WriteResponse *WriteResponse `protobuf:"bytes,4,opt,name=write_response,json=writeResponse,proto3,oneof"`
+}
+
+type TaskDataUp_TunnelData struct {
+	TunnelData *TunnelData `protobuf:"bytes,5,opt,name=tunnel_data,json=tunnelData,proto3,oneof"`
+}
+
+func (*TaskDataUp_ExecOutput) isTaskDataUp_Payload() {}
+
+func (*TaskDataUp_ReadOutput) isTaskDataUp_Payload() {}
+
+func (*TaskDataUp_WriteResponse) isTaskDataUp_Payload() {}
+
+func (*TaskDataUp_TunnelData) isTaskDataUp_Payload() {}
+
+// Server → Agent (requests flowing down)
+type TaskDataDown struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TaskId string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*TaskDataDown_ExecRequest
+	//	*TaskDataDown_ReadRequest
+	//	*TaskDataDown_WriteInput
+	//	*TaskDataDown_TunnelData
+	Payload       isTaskDataDown_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskDataDown) Reset() {
+	*x = TaskDataDown{}
+	mi := &file_operations_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskDataDown) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskDataDown) ProtoMessage() {}
+
+func (x *TaskDataDown) ProtoReflect() protoreflect.Message {
+	mi := &file_operations_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskDataDown.ProtoReflect.Descriptor instead.
+func (*TaskDataDown) Descriptor() ([]byte, []int) {
+	return file_operations_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TaskDataDown) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *TaskDataDown) GetPayload() isTaskDataDown_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *TaskDataDown) GetExecRequest() *ExecRequest {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataDown_ExecRequest); ok {
+			return x.ExecRequest
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataDown) GetReadRequest() *ReadRequest {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataDown_ReadRequest); ok {
+			return x.ReadRequest
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataDown) GetWriteInput() *WriteInput {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataDown_WriteInput); ok {
+			return x.WriteInput
+		}
+	}
+	return nil
+}
+
+func (x *TaskDataDown) GetTunnelData() *TunnelData {
+	if x != nil {
+		if x, ok := x.Payload.(*TaskDataDown_TunnelData); ok {
+			return x.TunnelData
+		}
+	}
+	return nil
+}
+
+type isTaskDataDown_Payload interface {
+	isTaskDataDown_Payload()
+}
+
+type TaskDataDown_ExecRequest struct {
+	ExecRequest *ExecRequest `protobuf:"bytes,2,opt,name=exec_request,json=execRequest,proto3,oneof"`
+}
+
+type TaskDataDown_ReadRequest struct {
+	ReadRequest *ReadRequest `protobuf:"bytes,3,opt,name=read_request,json=readRequest,proto3,oneof"`
+}
+
+type TaskDataDown_WriteInput struct {
+	WriteInput *WriteInput `protobuf:"bytes,4,opt,name=write_input,json=writeInput,proto3,oneof"`
+}
+
+type TaskDataDown_TunnelData struct {
+	TunnelData *TunnelData `protobuf:"bytes,5,opt,name=tunnel_data,json=tunnelData,proto3,oneof"`
+}
+
+func (*TaskDataDown_ExecRequest) isTaskDataDown_Payload() {}
+
+func (*TaskDataDown_ReadRequest) isTaskDataDown_Payload() {}
+
+func (*TaskDataDown_WriteInput) isTaskDataDown_Payload() {}
+
+func (*TaskDataDown_TunnelData) isTaskDataDown_Payload() {}
+
 var File_operations_proto protoreflect.FileDescriptor
 
 const file_operations_proto_rawDesc = "" +
@@ -841,12 +1087,35 @@ const file_operations_proto_rawDesc = "" +
 	"TunnelOpen\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
 	"\vremote_port\x18\x02 \x01(\x05R\n" +
-	"remotePort2\xae\x02\n" +
+	"remotePort\"\xb9\x02\n" +
+	"\n" +
+	"TaskDataUp\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12>\n" +
+	"\vexec_output\x18\x02 \x01(\v2\x1b.axon.operations.ExecOutputH\x00R\n" +
+	"execOutput\x12>\n" +
+	"\vread_output\x18\x03 \x01(\v2\x1b.axon.operations.ReadOutputH\x00R\n" +
+	"readOutput\x12G\n" +
+	"\x0ewrite_response\x18\x04 \x01(\v2\x1e.axon.operations.WriteResponseH\x00R\rwriteResponse\x12>\n" +
+	"\vtunnel_data\x18\x05 \x01(\v2\x1b.axon.operations.TunnelDataH\x00R\n" +
+	"tunnelDataB\t\n" +
+	"\apayload\"\xb8\x02\n" +
+	"\fTaskDataDown\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12A\n" +
+	"\fexec_request\x18\x02 \x01(\v2\x1c.axon.operations.ExecRequestH\x00R\vexecRequest\x12A\n" +
+	"\fread_request\x18\x03 \x01(\v2\x1c.axon.operations.ReadRequestH\x00R\vreadRequest\x12>\n" +
+	"\vwrite_input\x18\x04 \x01(\v2\x1b.axon.operations.WriteInputH\x00R\n" +
+	"writeInput\x12>\n" +
+	"\vtunnel_data\x18\x05 \x01(\v2\x1b.axon.operations.TunnelDataH\x00R\n" +
+	"tunnelDataB\t\n" +
+	"\apayload2\xae\x02\n" +
 	"\x11OperationsService\x12C\n" +
 	"\x04Exec\x12\x1c.axon.operations.ExecRequest\x1a\x1b.axon.operations.ExecOutput0\x01\x12C\n" +
 	"\x04Read\x12\x1c.axon.operations.ReadRequest\x1a\x1b.axon.operations.ReadOutput0\x01\x12F\n" +
 	"\x05Write\x12\x1b.axon.operations.WriteInput\x1a\x1e.axon.operations.WriteResponse(\x01\x12G\n" +
-	"\aForward\x12\x1b.axon.operations.TunnelData\x1a\x1b.axon.operations.TunnelData(\x010\x01B.Z,github.com/garysng/axon/gen/proto/operationsb\x06proto3"
+	"\aForward\x12\x1b.axon.operations.TunnelData\x1a\x1b.axon.operations.TunnelData(\x010\x012_\n" +
+	"\x0fAgentOpsService\x12L\n" +
+	"\n" +
+	"HandleTask\x12\x1b.axon.operations.TaskDataUp\x1a\x1d.axon.operations.TaskDataDown(\x010\x01B.Z,github.com/garysng/axon/gen/proto/operationsb\x06proto3"
 
 var (
 	file_operations_proto_rawDescOnce sync.Once
@@ -860,7 +1129,7 @@ func file_operations_proto_rawDescGZIP() []byte {
 	return file_operations_proto_rawDescData
 }
 
-var file_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_operations_proto_goTypes = []any{
 	(*ExecRequest)(nil),   // 0: axon.operations.ExecRequest
 	(*ExecOutput)(nil),    // 1: axon.operations.ExecOutput
@@ -873,27 +1142,39 @@ var file_operations_proto_goTypes = []any{
 	(*WriteResponse)(nil), // 8: axon.operations.WriteResponse
 	(*TunnelData)(nil),    // 9: axon.operations.TunnelData
 	(*TunnelOpen)(nil),    // 10: axon.operations.TunnelOpen
-	nil,                   // 11: axon.operations.ExecRequest.EnvEntry
+	(*TaskDataUp)(nil),    // 11: axon.operations.TaskDataUp
+	(*TaskDataDown)(nil),  // 12: axon.operations.TaskDataDown
+	nil,                   // 13: axon.operations.ExecRequest.EnvEntry
 }
 var file_operations_proto_depIdxs = []int32{
-	11, // 0: axon.operations.ExecRequest.env:type_name -> axon.operations.ExecRequest.EnvEntry
+	13, // 0: axon.operations.ExecRequest.env:type_name -> axon.operations.ExecRequest.EnvEntry
 	2,  // 1: axon.operations.ExecOutput.exit:type_name -> axon.operations.ExecExit
 	5,  // 2: axon.operations.ReadOutput.meta:type_name -> axon.operations.ReadMeta
 	7,  // 3: axon.operations.WriteInput.header:type_name -> axon.operations.WriteHeader
 	10, // 4: axon.operations.TunnelData.open:type_name -> axon.operations.TunnelOpen
-	0,  // 5: axon.operations.OperationsService.Exec:input_type -> axon.operations.ExecRequest
-	3,  // 6: axon.operations.OperationsService.Read:input_type -> axon.operations.ReadRequest
-	6,  // 7: axon.operations.OperationsService.Write:input_type -> axon.operations.WriteInput
-	9,  // 8: axon.operations.OperationsService.Forward:input_type -> axon.operations.TunnelData
-	1,  // 9: axon.operations.OperationsService.Exec:output_type -> axon.operations.ExecOutput
-	4,  // 10: axon.operations.OperationsService.Read:output_type -> axon.operations.ReadOutput
-	8,  // 11: axon.operations.OperationsService.Write:output_type -> axon.operations.WriteResponse
-	9,  // 12: axon.operations.OperationsService.Forward:output_type -> axon.operations.TunnelData
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	1,  // 5: axon.operations.TaskDataUp.exec_output:type_name -> axon.operations.ExecOutput
+	4,  // 6: axon.operations.TaskDataUp.read_output:type_name -> axon.operations.ReadOutput
+	8,  // 7: axon.operations.TaskDataUp.write_response:type_name -> axon.operations.WriteResponse
+	9,  // 8: axon.operations.TaskDataUp.tunnel_data:type_name -> axon.operations.TunnelData
+	0,  // 9: axon.operations.TaskDataDown.exec_request:type_name -> axon.operations.ExecRequest
+	3,  // 10: axon.operations.TaskDataDown.read_request:type_name -> axon.operations.ReadRequest
+	6,  // 11: axon.operations.TaskDataDown.write_input:type_name -> axon.operations.WriteInput
+	9,  // 12: axon.operations.TaskDataDown.tunnel_data:type_name -> axon.operations.TunnelData
+	0,  // 13: axon.operations.OperationsService.Exec:input_type -> axon.operations.ExecRequest
+	3,  // 14: axon.operations.OperationsService.Read:input_type -> axon.operations.ReadRequest
+	6,  // 15: axon.operations.OperationsService.Write:input_type -> axon.operations.WriteInput
+	9,  // 16: axon.operations.OperationsService.Forward:input_type -> axon.operations.TunnelData
+	11, // 17: axon.operations.AgentOpsService.HandleTask:input_type -> axon.operations.TaskDataUp
+	1,  // 18: axon.operations.OperationsService.Exec:output_type -> axon.operations.ExecOutput
+	4,  // 19: axon.operations.OperationsService.Read:output_type -> axon.operations.ReadOutput
+	8,  // 20: axon.operations.OperationsService.Write:output_type -> axon.operations.WriteResponse
+	9,  // 21: axon.operations.OperationsService.Forward:output_type -> axon.operations.TunnelData
+	12, // 22: axon.operations.AgentOpsService.HandleTask:output_type -> axon.operations.TaskDataDown
+	18, // [18:23] is the sub-list for method output_type
+	13, // [13:18] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_operations_proto_init() }
@@ -915,15 +1196,27 @@ func file_operations_proto_init() {
 		(*WriteInput_Header)(nil),
 		(*WriteInput_Data)(nil),
 	}
+	file_operations_proto_msgTypes[11].OneofWrappers = []any{
+		(*TaskDataUp_ExecOutput)(nil),
+		(*TaskDataUp_ReadOutput)(nil),
+		(*TaskDataUp_WriteResponse)(nil),
+		(*TaskDataUp_TunnelData)(nil),
+	}
+	file_operations_proto_msgTypes[12].OneofWrappers = []any{
+		(*TaskDataDown_ExecRequest)(nil),
+		(*TaskDataDown_ReadRequest)(nil),
+		(*TaskDataDown_WriteInput)(nil),
+		(*TaskDataDown_TunnelData)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_operations_proto_rawDesc), len(file_operations_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_operations_proto_goTypes,
 		DependencyIndexes: file_operations_proto_depIdxs,

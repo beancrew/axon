@@ -99,3 +99,37 @@ message TunnelOpen {
   string node_id = 1;
   int32 remote_port = 2;
 }
+
+// ─── Agent Data Plane ──────────────────────────────────────────────────────
+
+// AgentOpsService is called by agents to fulfill dispatched tasks.
+// Each agent opens a HandleTask stream after receiving a TaskSignal
+// on the control plane.
+service AgentOpsService {
+  // Bidirectional stream for task execution.
+  // Agent sends task_id in first message, then streams results.
+  // Server sends task request, then relays CLI data (for write/forward).
+  rpc HandleTask(stream TaskDataUp) returns (stream TaskDataDown);
+}
+
+// Agent → Server (results flowing up)
+message TaskDataUp {
+  string task_id = 1;
+  oneof payload {
+    ExecOutput exec_output = 2;
+    ReadOutput read_output = 3;
+    WriteResponse write_response = 4;
+    TunnelData tunnel_data = 5;
+  }
+}
+
+// Server → Agent (requests flowing down)
+message TaskDataDown {
+  string task_id = 1;
+  oneof payload {
+    ExecRequest exec_request = 2;
+    ReadRequest read_request = 3;
+    WriteInput write_input = 4;
+    TunnelData tunnel_data = 5;
+  }
+}

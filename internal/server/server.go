@@ -81,13 +81,16 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	}
 	s.auditWriter = audit.NewWriter(auditStore, 256)
 
-	// Build router, operations, and management services.
+	// Build router, bridge, and services.
 	router := newRouter(s.registry)
-	ops := newOperationsService(router, s.control, s.auditWriter)
+	bridge := newTaskBridge()
+	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
+	agentOps := newAgentOpsService(bridge)
 	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
+	operationspb.RegisterAgentOpsServiceServer(s.grpc, agentOps)
 	managementpb.RegisterManagementServiceServer(s.grpc, mgmt)
 
 	// Start heartbeat monitor; it stops when ctx is cancelled.
