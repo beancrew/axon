@@ -12,8 +12,8 @@ import (
 	controlpb "github.com/garysng/axon/gen/proto/control"
 	managementpb "github.com/garysng/axon/gen/proto/management"
 	operationspb "github.com/garysng/axon/gen/proto/operations"
-	"github.com/garysng/axon/internal/server"
 	"github.com/garysng/axon/internal/server/registry"
+	"github.com/garysng/axon/pkg/auth"
 	"github.com/garysng/axon/test/integration/testharness"
 )
 
@@ -211,7 +211,7 @@ func hashPassword(t *testing.T, password string) string {
 }
 
 func TestIntegration_Login(t *testing.T) {
-	users := []server.UserEntry{
+	users := []auth.UserEntry{
 		{
 			Username:     "admin",
 			PasswordHash: hashPassword(t, "secret123"),
@@ -243,7 +243,7 @@ func TestIntegration_Login(t *testing.T) {
 }
 
 func TestIntegration_LoginInvalidCredentials(t *testing.T) {
-	users := []server.UserEntry{
+	users := []auth.UserEntry{
 		{
 			Username:     "admin",
 			PasswordHash: hashPassword(t, "secret123"),

@@ -782,6 +782,482 @@ func (x *TokenInfo) GetExpiresAt() int64 {
 	return 0
 }
 
+type CreateUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	NodeIds       []string               `protobuf:"bytes,3,rep,name=node_ids,json=nodeIds,proto3" json:"node_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserRequest) Reset() {
+	*x = CreateUserRequest{}
+	mi := &file_management_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserRequest) ProtoMessage() {}
+
+func (x *CreateUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserRequest.ProtoReflect.Descriptor instead.
+func (*CreateUserRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CreateUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *CreateUserRequest) GetNodeIds() []string {
+	if x != nil {
+		return x.NodeIds
+	}
+	return nil
+}
+
+type CreateUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateUserResponse) Reset() {
+	*x = CreateUserResponse{}
+	mi := &file_management_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateUserResponse) ProtoMessage() {}
+
+func (x *CreateUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateUserResponse.ProtoReflect.Descriptor instead.
+func (*CreateUserResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CreateUserResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateUserResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type UpdateUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"` // empty means leave password unchanged
+	NodeIds       []string               `protobuf:"bytes,3,rep,name=node_ids,json=nodeIds,proto3" json:"node_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserRequest) Reset() {
+	*x = UpdateUserRequest{}
+	mi := &file_management_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserRequest) ProtoMessage() {}
+
+func (x *UpdateUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserRequest.ProtoReflect.Descriptor instead.
+func (*UpdateUserRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UpdateUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UpdateUserRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *UpdateUserRequest) GetNodeIds() []string {
+	if x != nil {
+		return x.NodeIds
+	}
+	return nil
+}
+
+type UpdateUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserResponse) Reset() {
+	*x = UpdateUserResponse{}
+	mi := &file_management_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserResponse) ProtoMessage() {}
+
+func (x *UpdateUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserResponse.ProtoReflect.Descriptor instead.
+func (*UpdateUserResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *UpdateUserResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UpdateUserResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DeleteUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteUserRequest) Reset() {
+	*x = DeleteUserRequest{}
+	mi := &file_management_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteUserRequest) ProtoMessage() {}
+
+func (x *DeleteUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteUserRequest.ProtoReflect.Descriptor instead.
+func (*DeleteUserRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *DeleteUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type DeleteUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteUserResponse) Reset() {
+	*x = DeleteUserResponse{}
+	mi := &file_management_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteUserResponse) ProtoMessage() {}
+
+func (x *DeleteUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteUserResponse.ProtoReflect.Descriptor instead.
+func (*DeleteUserResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *DeleteUserResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteUserResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersRequest) Reset() {
+	*x = ListUsersRequest{}
+	mi := &file_management_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersRequest) ProtoMessage() {}
+
+func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListUsersRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{20}
+}
+
+type ListUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*UserInfo            `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersResponse) Reset() {
+	*x = ListUsersResponse{}
+	mi := &file_management_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersResponse) ProtoMessage() {}
+
+func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListUsersResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListUsersResponse) GetUsers() []*UserInfo {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+type UserInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	NodeIds       []string               `protobuf:"bytes,2,rep,name=node_ids,json=nodeIds,proto3" json:"node_ids,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Unix timestamp
+	UpdatedAt     int64                  `protobuf:"varint,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Unix timestamp
+	Disabled      bool                   `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserInfo) Reset() {
+	*x = UserInfo{}
+	mi := &file_management_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserInfo) ProtoMessage() {}
+
+func (x *UserInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserInfo.ProtoReflect.Descriptor instead.
+func (*UserInfo) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *UserInfo) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UserInfo) GetNodeIds() []string {
+	if x != nil {
+		return x.NodeIds
+	}
+	return nil
+}
+
+func (x *UserInfo) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *UserInfo) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
+func (x *UserInfo) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
 var File_management_proto protoreflect.FileDescriptor
 
 const file_management_proto_rawDesc = "" +
@@ -837,7 +1313,37 @@ const file_management_proto_rawDesc = "" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tissued_at\x18\x04 \x01(\x03R\bissuedAt\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x05 \x01(\x03R\texpiresAt2\x85\x04\n" +
+	"expires_at\x18\x05 \x01(\x03R\texpiresAt\"f\n" +
+	"\x11CreateUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x19\n" +
+	"\bnode_ids\x18\x03 \x03(\tR\anodeIds\"D\n" +
+	"\x12CreateUserResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"f\n" +
+	"\x11UpdateUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x19\n" +
+	"\bnode_ids\x18\x03 \x03(\tR\anodeIds\"D\n" +
+	"\x12UpdateUserResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"/\n" +
+	"\x11DeleteUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"D\n" +
+	"\x12DeleteUserResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\x12\n" +
+	"\x10ListUsersRequest\"D\n" +
+	"\x11ListUsersResponse\x12/\n" +
+	"\x05users\x18\x01 \x03(\v2\x19.axon.management.UserInfoR\x05users\"\x9b\x01\n" +
+	"\bUserInfo\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x19\n" +
+	"\bnode_ids\x18\x02 \x03(\tR\anodeIds\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x03 \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x04 \x01(\x03R\tupdatedAt\x12\x1a\n" +
+	"\bdisabled\x18\x05 \x01(\bR\bdisabled2\xde\x06\n" +
 	"\x11ManagementService\x12R\n" +
 	"\tListNodes\x12!.axon.management.ListNodesRequest\x1a\".axon.management.ListNodesResponse\x12L\n" +
 	"\aGetNode\x12\x1f.axon.management.GetNodeRequest\x1a .axon.management.GetNodeResponse\x12U\n" +
@@ -846,7 +1352,14 @@ const file_management_proto_rawDesc = "" +
 	"\x05Login\x12\x1d.axon.management.LoginRequest\x1a\x1e.axon.management.LoginResponse\x12X\n" +
 	"\vRevokeToken\x12#.axon.management.RevokeTokenRequest\x1a$.axon.management.RevokeTokenResponse\x12U\n" +
 	"\n" +
-	"ListTokens\x12\".axon.management.ListTokensRequest\x1a#.axon.management.ListTokensResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
+	"ListTokens\x12\".axon.management.ListTokensRequest\x1a#.axon.management.ListTokensResponse\x12U\n" +
+	"\n" +
+	"CreateUser\x12\".axon.management.CreateUserRequest\x1a#.axon.management.CreateUserResponse\x12U\n" +
+	"\n" +
+	"UpdateUser\x12\".axon.management.UpdateUserRequest\x1a#.axon.management.UpdateUserResponse\x12U\n" +
+	"\n" +
+	"DeleteUser\x12\".axon.management.DeleteUserRequest\x1a#.axon.management.DeleteUserResponse\x12R\n" +
+	"\tListUsers\x12!.axon.management.ListUsersRequest\x1a\".axon.management.ListUsersResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
 
 var (
 	file_management_proto_rawDescOnce sync.Once
@@ -860,7 +1373,7 @@ func file_management_proto_rawDescGZIP() []byte {
 	return file_management_proto_rawDescData
 }
 
-var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_management_proto_goTypes = []any{
 	(*ListNodesRequest)(nil),    // 0: axon.management.ListNodesRequest
 	(*ListNodesResponse)(nil),   // 1: axon.management.ListNodesResponse
@@ -876,32 +1389,50 @@ var file_management_proto_goTypes = []any{
 	(*ListTokensRequest)(nil),   // 11: axon.management.ListTokensRequest
 	(*ListTokensResponse)(nil),  // 12: axon.management.ListTokensResponse
 	(*TokenInfo)(nil),           // 13: axon.management.TokenInfo
-	nil,                         // 14: axon.management.GetNodeResponse.LabelsEntry
-	(*control.OSInfo)(nil),      // 15: axon.control.OSInfo
+	(*CreateUserRequest)(nil),   // 14: axon.management.CreateUserRequest
+	(*CreateUserResponse)(nil),  // 15: axon.management.CreateUserResponse
+	(*UpdateUserRequest)(nil),   // 16: axon.management.UpdateUserRequest
+	(*UpdateUserResponse)(nil),  // 17: axon.management.UpdateUserResponse
+	(*DeleteUserRequest)(nil),   // 18: axon.management.DeleteUserRequest
+	(*DeleteUserResponse)(nil),  // 19: axon.management.DeleteUserResponse
+	(*ListUsersRequest)(nil),    // 20: axon.management.ListUsersRequest
+	(*ListUsersResponse)(nil),   // 21: axon.management.ListUsersResponse
+	(*UserInfo)(nil),            // 22: axon.management.UserInfo
+	nil,                         // 23: axon.management.GetNodeResponse.LabelsEntry
+	(*control.OSInfo)(nil),      // 24: axon.control.OSInfo
 }
 var file_management_proto_depIdxs = []int32{
 	2,  // 0: axon.management.ListNodesResponse.nodes:type_name -> axon.management.NodeSummary
-	15, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
+	24, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
 	2,  // 2: axon.management.GetNodeResponse.summary:type_name -> axon.management.NodeSummary
-	14, // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
+	23, // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
 	13, // 4: axon.management.ListTokensResponse.tokens:type_name -> axon.management.TokenInfo
-	0,  // 5: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
-	3,  // 6: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
-	5,  // 7: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
-	7,  // 8: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
-	9,  // 9: axon.management.ManagementService.RevokeToken:input_type -> axon.management.RevokeTokenRequest
-	11, // 10: axon.management.ManagementService.ListTokens:input_type -> axon.management.ListTokensRequest
-	1,  // 11: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
-	4,  // 12: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
-	6,  // 13: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
-	8,  // 14: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
-	10, // 15: axon.management.ManagementService.RevokeToken:output_type -> axon.management.RevokeTokenResponse
-	12, // 16: axon.management.ManagementService.ListTokens:output_type -> axon.management.ListTokensResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	22, // 5: axon.management.ListUsersResponse.users:type_name -> axon.management.UserInfo
+	0,  // 6: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
+	3,  // 7: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
+	5,  // 8: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
+	7,  // 9: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
+	9,  // 10: axon.management.ManagementService.RevokeToken:input_type -> axon.management.RevokeTokenRequest
+	11, // 11: axon.management.ManagementService.ListTokens:input_type -> axon.management.ListTokensRequest
+	14, // 12: axon.management.ManagementService.CreateUser:input_type -> axon.management.CreateUserRequest
+	16, // 13: axon.management.ManagementService.UpdateUser:input_type -> axon.management.UpdateUserRequest
+	18, // 14: axon.management.ManagementService.DeleteUser:input_type -> axon.management.DeleteUserRequest
+	20, // 15: axon.management.ManagementService.ListUsers:input_type -> axon.management.ListUsersRequest
+	1,  // 16: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
+	4,  // 17: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
+	6,  // 18: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
+	8,  // 19: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
+	10, // 20: axon.management.ManagementService.RevokeToken:output_type -> axon.management.RevokeTokenResponse
+	12, // 21: axon.management.ManagementService.ListTokens:output_type -> axon.management.ListTokensResponse
+	15, // 22: axon.management.ManagementService.CreateUser:output_type -> axon.management.CreateUserResponse
+	17, // 23: axon.management.ManagementService.UpdateUser:output_type -> axon.management.UpdateUserResponse
+	19, // 24: axon.management.ManagementService.DeleteUser:output_type -> axon.management.DeleteUserResponse
+	21, // 25: axon.management.ManagementService.ListUsers:output_type -> axon.management.ListUsersResponse
+	16, // [16:26] is the sub-list for method output_type
+	6,  // [6:16] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_management_proto_init() }
@@ -915,7 +1446,7 @@ func file_management_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_management_proto_rawDesc), len(file_management_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

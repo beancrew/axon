@@ -4,12 +4,15 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"net"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	_ "modernc.org/sqlite" // SQLite driver
 
 	controlpb "github.com/garysng/axon/gen/proto/control"
 	managementpb "github.com/garysng/axon/gen/proto/management"
@@ -27,8 +30,9 @@ type ServerConfig struct {
 	JWTSecret         string
 	HeartbeatInterval time.Duration
 	HeartbeatTimeout  time.Duration
-	AuditDBPath       string      // SQLite path; empty or ":memory:" for in-process
-	Users             []UserEntry // CLI user credentials for Login
+	AuditDBPath       string           // SQLite path for audit log; empty defaults to ":memory:"
+	DataDBPath        string           // SQLite path for registry/token/user stores; empty defaults to ":memory:"
+	Users             []auth.UserEntry // bootstrap users loaded from config YAML
 }
 
 // Server wraps a gRPC server with its dependencies.
@@ -38,8 +42,10 @@ type Server struct {
 	registry     *registry.Registry
 	control      *ControlService
 	auditWriter  *audit.Writer
+	userStore    *auth.UserStore
 	tokenStore   *auth.TokenStore
 	tokenChecker *auth.TokenChecker
+	dataDB       *sql.DB // shared database; closed last in GracefulStop
 }
 
 // NewServer creates a new Server with the given configuration.
@@ -61,12 +67,31 @@ func (s *Server) Start(ctx context.Context) error {
 // serve is the internal implementation shared by Start and test helpers
 // that supply their own net.Listener (e.g. bufconn).
 func (s *Server) serve(ctx context.Context, lis net.Listener) error {
-	// Build registry and control service.
-	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
+	// Open the single shared database for registry, token, and user stores.
+	dataDBPath := s.cfg.DataDBPath
+	if dataDBPath == "" {
+		dataDBPath = ":memory:"
+	}
+	db, err := sql.Open("sqlite", dataDBPath)
+	if err != nil {
+		return fmt.Errorf("server: open data db: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		_ = db.Close()
+		return fmt.Errorf("server: set WAL: %w", err)
+	}
+	s.dataDB = db
+
+	// Build registry with its SQLite backing store.
+	regStore, err := registry.NewSQLiteStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init registry store: %w", err)
+	}
+	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout, regStore)
 	s.control = newControlService(s.registry, s.cfg)
 
 	// Initialize token management (store + in-memory revocation checker).
-	tokenStore, err := auth.NewTokenStore(":memory:")
+	tokenStore, err := auth.NewTokenStoreFromDB(db)
 	if err != nil {
 		return fmt.Errorf("server: init token store: %w", err)
 	}
@@ -77,6 +102,19 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 		return fmt.Errorf("server: init token checker: %w", err)
 	}
 	s.tokenChecker = tokenChecker
+
+	// Initialize user store and bootstrap config users.
+	userStore, err := auth.NewUserStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init user store: %w", err)
+	}
+	s.userStore = userStore
+	// Bootstrap: seed config-defined users into the DB (skip if already present).
+	// NOTE: At least one bootstrap user in config is required for a fresh DB,
+	// since user management RPCs require authentication.
+	for i := range s.cfg.Users {
+		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
+	}
 
 	// Build gRPC server with interceptors that check revoked tokens.
 	opts, err := s.buildServerOptions(tokenChecker)
@@ -101,7 +139,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
+	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
@@ -124,7 +162,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	return nil
 }
 
-// GracefulStop shuts down the gRPC server gracefully and flushes the audit log.
+// GracefulStop shuts down the gRPC server gracefully and releases all resources.
 func (s *Server) GracefulStop() {
 	if s.grpc != nil {
 		s.grpc.GracefulStop()
@@ -132,8 +170,18 @@ func (s *Server) GracefulStop() {
 	if s.auditWriter != nil {
 		_ = s.auditWriter.Close()
 	}
+	if s.userStore != nil {
+		_ = s.userStore.Close()
+	}
 	if s.tokenStore != nil {
 		_ = s.tokenStore.Close()
+	}
+	if s.registry != nil {
+		_ = s.registry.Close()
+	}
+	// Close the shared database last, after all stores have been shut down.
+	if s.dataDB != nil {
+		_ = s.dataDB.Close()
 	}
 }
 

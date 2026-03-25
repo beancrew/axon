@@ -45,7 +45,8 @@ type Store interface {
 
 // SQLiteStore persists node entries in a SQLite database.
 type SQLiteStore struct {
-	db *sql.DB
+	db     *sql.DB
+	ownsDB bool
 }
 
 // NewSQLiteStore opens (or creates) the SQLite database at dbPath and
@@ -64,7 +65,16 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("registry store: migrate schema: %w", err)
 	}
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: db, ownsDB: true}, nil
+}
+
+// NewSQLiteStoreFromDB creates a SQLiteStore using an existing *sql.DB and
+// runs the schema migration. The caller owns the database; Close() is a no-op.
+func NewSQLiteStoreFromDB(db *sql.DB) (*SQLiteStore, error) {
+	if _, err := db.Exec(nodeSchema); err != nil {
+		return nil, fmt.Errorf("registry store: migrate schema: %w", err)
+	}
+	return &SQLiteStore{db: db, ownsDB: false}, nil
 }
 
 // LoadAll reads all node entries from the database.
@@ -227,9 +237,13 @@ func (s *SQLiteStore) UpdateStatus(nodeID string, status string) error {
 	return nil
 }
 
-// Close closes the underlying database connection.
+// Close closes the underlying database connection only if this store owns it.
+// Stores created via NewSQLiteStoreFromDB do not close the shared DB.
 func (s *SQLiteStore) Close() error {
-	return s.db.Close()
+	if s.ownsDB {
+		return s.db.Close()
+	}
+	return nil
 }
 
 // nullableUnix returns the Unix timestamp as *int64 if t is non-zero, or nil.

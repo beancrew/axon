@@ -43,7 +43,7 @@ type harnessOpts struct {
 	heartbeatInterval time.Duration
 	heartbeatTimeout  time.Duration
 	agentNodeName     string
-	users             []server.UserEntry
+	users             []auth.UserEntry
 }
 
 func defaultOpts() harnessOpts {
@@ -79,7 +79,7 @@ func WithAgentNodeName(name string) HarnessOption {
 }
 
 // WithUsers sets the CLI user credentials for Login tests.
-func WithUsers(users []server.UserEntry) HarnessOption {
+func WithUsers(users []auth.UserEntry) HarnessOption {
 	return func(o *harnessOpts) { o.users = users }
 }
 

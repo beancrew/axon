@@ -39,6 +39,7 @@ func rootCmd() *cobra.Command {
 		configCmd(),
 		nodeCmd(),
 		authCmd(),
+		userCmd(),
 		execCmd(),
 		readCmd(),
 		writeCmd(),

@@ -38,7 +38,8 @@ type TokenEntry struct {
 
 // TokenStore persists issued tokens to a SQLite database.
 type TokenStore struct {
-	db *sql.DB
+	db     *sql.DB
+	ownsDB bool
 }
 
 // NewTokenStore opens (or creates) a SQLite database at dbPath and
@@ -52,12 +53,25 @@ func NewTokenStore(dbPath string) (*TokenStore, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("auth: init token schema: %w", err)
 	}
-	return &TokenStore{db: db}, nil
+	return &TokenStore{db: db, ownsDB: true}, nil
 }
 
-// Close releases the database connection.
+// NewTokenStoreFromDB creates a TokenStore using an existing *sql.DB and
+// runs the schema migration. The caller owns the database; Close() is a no-op.
+func NewTokenStoreFromDB(db *sql.DB) (*TokenStore, error) {
+	if _, err := db.Exec(createTokensSchema); err != nil {
+		return nil, fmt.Errorf("auth: init token schema: %w", err)
+	}
+	return &TokenStore{db: db, ownsDB: false}, nil
+}
+
+// Close releases the database connection only if this store owns it.
+// Stores created via NewTokenStoreFromDB do not close the shared DB.
 func (s *TokenStore) Close() error {
-	return s.db.Close()
+	if s.ownsDB {
+		return s.db.Close()
+	}
+	return nil
 }
 
 // Insert records a newly-issued token.
