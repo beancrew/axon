@@ -1,91 +1,64 @@
 # Axon Protocol Design
 
+> [中文版 / Chinese](zh/protocol.md)
+
 ## Overview
 
-All communication uses gRPC over HTTP/2 with Protocol Buffers serialization.
+All communication uses gRPC over HTTP/2 with Protocol Buffers serialization. Three proto files define the entire API surface.
 
-Three proto files:
-- `control.proto` — Agent ↔ Server control plane
-- `operations.proto` — CLI ↔ Server ↔ Agent data plane (exec/read/write/forward)
-- `management.proto` — CLI ↔ Server management (node list/info/remove, auth)
+## Proto Files
 
-## 1. Control Plane — `control.proto`
+| File | Package | Services | Purpose |
+|------|---------|----------|---------|
+| `control.proto` | `axon.control` | `ControlService` | Agent ↔ Server control plane |
+| `operations.proto` | `axon.operations` | `OperationsService`, `AgentOpsService` | CLI operations + agent task handling |
+| `management.proto` | `axon.management` | `ManagementService` | Node/user/token management + auth |
 
-Long-lived bidirectional stream between Agent and Server.
+## ControlService (Agent ↔ Server)
+
+Long-lived bidirectional stream for agent lifecycle management.
 
 ```protobuf
-syntax = "proto3";
-package axon.control;
-
 service ControlService {
-  // Agent establishes a persistent control channel on startup.
-  // Server uses this to track liveness and dispatch task signals.
   rpc Connect(stream AgentMessage) returns (stream ServerMessage);
 }
+```
 
-// ─── Agent → Server ───
+### Agent → Server Messages
 
-message AgentMessage {
-  oneof payload {
-    RegisterRequest register = 1;
-    Heartbeat heartbeat = 2;
-    NodeInfo node_info = 3;
-  }
-}
+| Message | Purpose |
+|---------|---------|
+| `RegisterRequest` | Initial registration (token, node_name, node_id, NodeInfo) |
+| `Heartbeat` | Periodic liveness signal (timestamp) |
+| `NodeInfo` | System info update (hostname, arch, IP, uptime, OSInfo) |
 
-message RegisterRequest {
-  string token = 1;           // Agent token (one-time registration)
-  string node_name = 2;       // Desired node name (falls back to hostname)
-  NodeInfo info = 3;          // Initial node info
-}
+`RegisterRequest.node_id` is empty on first connect; non-empty on reconnect (stable identity).
 
-message Heartbeat {
-  int64 timestamp = 1;        // Unix timestamp (ms)
-}
+### Server → Agent Messages
 
-message NodeInfo {
-  string hostname = 1;
-  string arch = 2;            // e.g. "amd64", "arm64"
-  string ip = 3;              // Primary IP
-  int64 uptime_seconds = 4;
-  string agent_version = 5;
-  OSInfo os_info = 6;         // Detailed OS information
-}
+| Message | Purpose |
+|---------|---------|
+| `RegisterResponse` | Registration result (node_id, heartbeat_interval) |
+| `HeartbeatAck` | Heartbeat acknowledgment (server timestamp) |
+| `TaskSignal` | Dispatch a task — agent opens data plane stream |
 
+### OSInfo
+
+Detailed OS information collected per-platform:
+
+```protobuf
 message OSInfo {
-  string os = 1;              // Kernel name: "linux", "darwin", "windows"
-  string os_version = 2;      // Kernel version: "6.8.0-45-generic", "24.3.0"
-  string platform = 3;        // Distribution/platform: "ubuntu", "centos", "debian", "macOS"
-  string platform_version = 4;// Distribution version: "24.04", "9", "14.4"
-  string pretty_name = 5;     // Human-readable: "Ubuntu 24.04 LTS", "macOS 14.4 Sonoma"
+  string os = 1;               // "linux", "darwin", "windows"
+  string os_version = 2;       // kernel version
+  string platform = 3;         // "ubuntu", "centos", "macOS"
+  string platform_version = 4; // "24.04", "9", "14.4"
+  string pretty_name = 5;      // "Ubuntu 24.04 LTS"
 }
+```
 
-// ─── Server → Agent ───
+### TaskType
 
-message ServerMessage {
-  oneof payload {
-    RegisterResponse register_response = 1;
-    HeartbeatAck heartbeat_ack = 2;
-    TaskSignal task_signal = 3;    // Notify agent to open a data plane stream
-  }
-}
-
-message RegisterResponse {
-  bool success = 1;
-  string node_id = 2;         // Server-assigned node ID
-  string error = 3;
-  int32 heartbeat_interval_seconds = 4;  // Server tells agent how often to heartbeat
-}
-
-message HeartbeatAck {
-  int64 server_timestamp = 1;
-}
-
-message TaskSignal {
-  string task_id = 1;         // Agent uses this to open a data plane stream
-  TaskType type = 2;
-}
-
+```protobuf
 enum TaskType {
   TASK_EXEC = 0;
   TASK_READ = 1;
@@ -94,237 +67,180 @@ enum TaskType {
 }
 ```
 
-### Flow
+## OperationsService (CLI → Server)
 
-1. Agent starts → calls `Connect()` → sends `RegisterRequest`
-2. Server validates token → responds `RegisterResponse` with node_id and heartbeat interval
-3. Agent sends `Heartbeat` every N seconds
-4. Server responds `HeartbeatAck`
-5. When CLI sends a request for this node, Server sends `TaskSignal` through control stream
-6. Agent receives `TaskSignal` → opens a new data plane stream with the task_id
-
-## 2. Data Plane — `operations.proto`
-
-Per-task streams for exec, read, write, forward.
+CLI-facing operations. Server routes to the target agent.
 
 ```protobuf
-syntax = "proto3";
-package axon.operations;
-
 service OperationsService {
-  // CLI calls these RPCs. Server routes to the target agent.
-
-  // Execute a command — streams stdout/stderr back
   rpc Exec(ExecRequest) returns (stream ExecOutput);
-
-  // Read a file — streams file content in chunks
   rpc Read(ReadRequest) returns (stream ReadOutput);
-
-  // Write a file — client streams file content in chunks
   rpc Write(stream WriteInput) returns (WriteResponse);
-
-  // Port forward — bidirectional byte stream
   rpc Forward(stream TunnelData) returns (stream TunnelData);
 }
-
-// ─── Exec ───
-
-message ExecRequest {
-  string node_id = 1;
-  string command = 2;
-  map<string, string> env = 3;      // Optional environment variables
-  string working_dir = 4;           // Optional working directory
-  int32 timeout_seconds = 5;        // 0 = no timeout
-}
-
-message ExecOutput {
-  oneof payload {
-    bytes stdout = 1;
-    bytes stderr = 2;
-    ExecExit exit = 3;
-  }
-}
-
-message ExecExit {
-  int32 exit_code = 1;
-  string error = 2;           // Non-empty if agent-level error (not command error)
-}
-
-// ─── Read ───
-
-message ReadRequest {
-  string node_id = 1;
-  string path = 2;
-}
-
-message ReadOutput {
-  oneof payload {
-    bytes data = 1;           // File content chunk
-    ReadMeta meta = 2;        // Sent first: file size, permissions, etc.
-    string error = 3;
-  }
-}
-
-message ReadMeta {
-  int64 size = 1;
-  int32 mode = 2;             // Unix file mode
-  int64 modified_at = 3;      // Unix timestamp
-}
-
-// ─── Write ───
-
-message WriteInput {
-  oneof payload {
-    WriteHeader header = 1;   // Sent first
-    bytes data = 2;           // File content chunks
-  }
-}
-
-message WriteHeader {
-  string node_id = 1;
-  string path = 2;
-  int32 mode = 3;             // Unix file mode (0644 default)
-}
-
-message WriteResponse {
-  bool success = 1;
-  int64 bytes_written = 2;
-  string error = 3;
-}
-
-// ─── Forward (Port Tunneling) ───
-
-message TunnelData {
-  string connection_id = 1;   // Identifies a single TCP connection
-  bytes payload = 2;          // Raw TCP bytes
-  bool close = 3;             // Signal to close this connection
-
-  // Only in first message of a new connection:
-  TunnelOpen open = 4;
-}
-
-message TunnelOpen {
-  string node_id = 1;
-  int32 remote_port = 2;
-}
 ```
 
-### Exec Flow
+### Exec
 
 ```
-CLI                         Server                      Agent
- │── ExecRequest ──────────→│── TaskSignal ────────────→│
- │  {node:web-1, cmd:...}   │                           │── open data stream
- │                           │                           │── run command
- │←─ ExecOutput(stdout) ────│←─ stdout bytes ───────────│
- │←─ ExecOutput(stderr) ────│←─ stderr bytes ───────────│
- │←─ ExecOutput(exit) ──────│←─ exit code ──────────────│
- │  stream closes            │  stream closes            │
+CLI sends ExecRequest{node_id, command, env, workdir, timeout}
+  → Server routes to agent
+  → Agent streams ExecOutput{stdout | stderr | exit}
 ```
 
-### Forward Flow
+### Read
 
 ```
-TCP client      CLI                    Server                  Agent               TCP target
-  │──connect──→│                        │                       │                      │
-  │             │──TunnelData{open}───→│──TaskSignal──────────→│                      │
-  │             │  {node:db-1,port:5432}│                       │──TCP connect────────→│
-  │             │                       │                       │                      │
-  │──data─────→│──TunnelData{payload}─→│──TunnelData{payload}→│──data────────────────→│
-  │←─data──────│←─TunnelData{payload}──│←─TunnelData{payload}─│←─data─────────────────│
-  │   ...       │   ...                 │   ...                 │   ...                 │
-  │──close────→│──TunnelData{close}───→│──TunnelData{close}──→│──TCP close────────────→│
+CLI sends ReadRequest{node_id, path}
+  → Server routes to agent
+  → Agent streams ReadOutput{meta (first), then data chunks}
 ```
 
-Each incoming TCP connection gets its own `connection_id`. Multiple TCP connections can be multiplexed over a single gRPC bidi stream, or each can open a separate stream (implementation choice — we use **one stream per TCP connection** for simplicity in Phase 1).
+### Write
 
-## 3. Management — `management.proto`
+```
+CLI streams WriteInput{header (first), then data chunks}
+  → Server routes to agent
+  → Agent returns WriteResponse{success, bytes_written}
+```
 
-Simple unary RPCs for node management and auth.
+### Forward (Port Tunneling)
+
+```
+CLI ←→ Server ←→ Agent: bidirectional TunnelData{connection_id, payload, close}
+First message includes TunnelOpen{node_id, remote_port}
+```
+
+Each TCP connection gets an independent gRPC bidi stream. Raw TCP bytes are wrapped in `TunnelData` messages.
+
+## AgentOpsService (Agent → Server)
+
+Agent-facing data plane. After receiving a `TaskSignal` on the control stream, the agent opens a `HandleTask` stream.
 
 ```protobuf
-syntax = "proto3";
-package axon.management;
+service AgentOpsService {
+  rpc HandleTask(stream TaskDataUp) returns (stream TaskDataDown);
+}
+```
 
+### Task Data Flow
+
+```
+TaskDataUp (agent → server):
+  task_id + {exec_output | read_output | write_response | tunnel_data}
+
+TaskDataDown (server → agent):
+  task_id + {exec_request | read_request | write_input | tunnel_data}
+```
+
+The server acts as a transparent bridge — relaying between the CLI's `OperationsService` stream and the agent's `HandleTask` stream.
+
+## ManagementService (CLI → Server)
+
+Node management, authentication, token management, and user management.
+
+```protobuf
 service ManagementService {
+  // Node management
   rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
   rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
+
+  // Authentication
   rpc Login(LoginRequest) returns (LoginResponse);
-}
 
-// ─── Node Management ───
+  // Token management
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
 
-message ListNodesRequest {}
-
-message ListNodesResponse {
-  repeated NodeSummary nodes = 1;
-}
-
-message NodeSummary {
-  string node_id = 1;
-  string node_name = 2;
-  string status = 3;          // "online" | "offline"
-  string arch = 4;
-  string ip = 5;
-  string agent_version = 6;
-  int64 connected_at = 7;     // Unix timestamp
-  int64 last_heartbeat = 8;   // Unix timestamp
-  OSInfo os_info = 9;         // Detailed OS information
-}
-
-message GetNodeRequest {
-  string node_id = 1;
-}
-
-message GetNodeResponse {
-  NodeSummary summary = 1;
-  int64 uptime_seconds = 2;
-  map<string, string> labels = 3;
-}
-
-message RemoveNodeRequest {
-  string node_id = 1;
-}
-
-message RemoveNodeResponse {
-  bool success = 1;
-  string error = 2;
-}
-
-// ─── Auth ───
-
-message LoginRequest {
-  string username = 1;
-  string password = 2;        // Phase 1: simple username/password
-}
-
-message LoginResponse {
-  string token = 1;           // JWT token
-  int64 expires_at = 2;       // Unix timestamp
-  string error = 3;
+  // User management
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
 }
 ```
 
-## Error Handling
+### Node Management
 
-All RPCs use standard gRPC status codes:
+| RPC | Input | Output | Auth |
+|-----|-------|--------|------|
+| `ListNodes` | — | `repeated NodeSummary` | JWT |
+| `GetNode` | `node_id` | `NodeSummary + labels + uptime` | JWT |
+| `RemoveNode` | `node_id` | `success/error` | JWT |
 
-| Scenario | gRPC Status Code |
-|----------|-----------------|
-| Node not found | `NOT_FOUND` |
-| Node offline | `UNAVAILABLE` |
-| Auth failed / token expired | `UNAUTHENTICATED` |
-| Token doesn't cover target node | `PERMISSION_DENIED` |
-| File not found (read) | `NOT_FOUND` |
-| Command timeout (exec) | `DEADLINE_EXCEEDED` |
-| Agent internal error | `INTERNAL` |
-| Invalid request | `INVALID_ARGUMENT` |
+### Authentication
 
-## TLS
+| RPC | Input | Output | Auth |
+|-----|-------|--------|------|
+| `Login` | `username, password` | `token, expires_at` | **None** (public endpoint) |
 
-All gRPC connections use TLS:
-- CLI → Server: standard TLS (server cert)
-- Agent → Server: standard TLS (server cert) + Agent token for identity
+Login validates credentials against the user store (SQLite). On success, issues a JWT with a unique JTI. The token is also persisted to the token store for listing/revocation.
 
-Phase 1: Server uses a single TLS cert. mTLS is a Phase 2 consideration.
+### Token Management
+
+| RPC | Input | Output | Auth |
+|-----|-------|--------|------|
+| `RevokeToken` | `token_id (jti)` | `success/error` | JWT |
+| `ListTokens` | `kind (optional)` | `repeated TokenInfo` | JWT |
+
+`TokenInfo` includes: `id (jti)`, `kind`, `user_id`, `issued_at`, `expires_at`.
+
+Revoked tokens are loaded into an in-memory set on startup and checked in the gRPC interceptor (O(1) per request).
+
+### User Management
+
+| RPC | Input | Output | Auth |
+|-----|-------|--------|------|
+| `CreateUser` | `username, password, node_ids` | `success/error` | JWT |
+| `UpdateUser` | `username, password?, node_ids?` | `success/error` | JWT |
+| `DeleteUser` | `username` | `success/error` | JWT |
+| `ListUsers` | — | `repeated UserInfo` | JWT |
+
+`UserInfo` includes: `username`, `node_ids`, `created_at`, `updated_at`, `disabled`.
+
+Update semantics:
+- `password` empty → leave unchanged
+- `node_ids` nil → leave unchanged
+- `node_ids` empty list → clear all node access
+
+## Authentication Flow
+
+### JWT Structure
+
+```
+Header: {"alg": "HS256", "typ": "JWT"}
+Payload: {
+  "sub": "gary",           // username
+  "node_ids": ["*"],       // allowed nodes
+  "jti": "uuid-...",       // unique token ID
+  "exp": 1234567890,       // expiry
+  "iat": 1234567890        // issued at
+}
+```
+
+### gRPC Interceptor
+
+All authenticated RPCs pass through a unary/stream interceptor that:
+
+1. Extracts `authorization: Bearer <token>` from gRPC metadata
+2. Verifies JWT signature (HMAC-SHA256)
+3. Checks expiry
+4. Checks if JTI is in the revoked set → `UNAUTHENTICATED`
+5. Injects claims into context
+
+**Bypass exceptions:**
+- `ManagementService/Login` — no auth required
+- `ControlService/Connect` — agent token validated in handler
+
+## Wire Patterns
+
+| Operation | CLI → Server | Server → Agent | Streaming |
+|-----------|-------------|----------------|-----------|
+| `exec` | Unary request → server stream | TaskSignal + HandleTask bidi | stdout/stderr chunks |
+| `read` | Unary request → server stream | TaskSignal + HandleTask bidi | file chunks |
+| `write` | Client stream → unary response | TaskSignal + HandleTask bidi | file chunks |
+| `forward` | Bidi stream | TaskSignal + HandleTask bidi | raw TCP bytes |
+| `node list` | Unary | — | — |
+| `login` | Unary | — | — |
+| `user create` | Unary | — | — |
