@@ -52,6 +52,7 @@ func rootCmd() *cobra.Command {
 	}
 	root.AddCommand(
 		startCmd(),
+		joinCmd(),
 		stopCmd(),
 		statusCmd(),
 		agentConfigCmd(),

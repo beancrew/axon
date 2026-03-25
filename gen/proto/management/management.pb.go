@@ -1258,6 +1258,514 @@ func (x *UserInfo) GetDisabled() bool {
 	return false
 }
 
+type CreateJoinTokenRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MaxUses        int32                  `protobuf:"varint,1,opt,name=max_uses,json=maxUses,proto3" json:"max_uses,omitempty"`                      // 0 = unlimited
+	ExpiresSeconds int64                  `protobuf:"varint,2,opt,name=expires_seconds,json=expiresSeconds,proto3" json:"expires_seconds,omitempty"` // 0 = never; seconds from now
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateJoinTokenRequest) Reset() {
+	*x = CreateJoinTokenRequest{}
+	mi := &file_management_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateJoinTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateJoinTokenRequest) ProtoMessage() {}
+
+func (x *CreateJoinTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateJoinTokenRequest.ProtoReflect.Descriptor instead.
+func (*CreateJoinTokenRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *CreateJoinTokenRequest) GetMaxUses() int32 {
+	if x != nil {
+		return x.MaxUses
+	}
+	return 0
+}
+
+func (x *CreateJoinTokenRequest) GetExpiresSeconds() int64 {
+	if x != nil {
+		return x.ExpiresSeconds
+	}
+	return 0
+}
+
+type CreateJoinTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"` // full plaintext token (shown once)
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`       // short ID for management
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateJoinTokenResponse) Reset() {
+	*x = CreateJoinTokenResponse{}
+	mi := &file_management_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateJoinTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateJoinTokenResponse) ProtoMessage() {}
+
+func (x *CreateJoinTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateJoinTokenResponse.ProtoReflect.Descriptor instead.
+func (*CreateJoinTokenResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CreateJoinTokenResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *CreateJoinTokenResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListJoinTokensRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListJoinTokensRequest) Reset() {
+	*x = ListJoinTokensRequest{}
+	mi := &file_management_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListJoinTokensRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListJoinTokensRequest) ProtoMessage() {}
+
+func (x *ListJoinTokensRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListJoinTokensRequest.ProtoReflect.Descriptor instead.
+func (*ListJoinTokensRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{25}
+}
+
+type ListJoinTokensResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tokens        []*JoinTokenInfo       `protobuf:"bytes,1,rep,name=tokens,proto3" json:"tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListJoinTokensResponse) Reset() {
+	*x = ListJoinTokensResponse{}
+	mi := &file_management_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListJoinTokensResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListJoinTokensResponse) ProtoMessage() {}
+
+func (x *ListJoinTokensResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListJoinTokensResponse.ProtoReflect.Descriptor instead.
+func (*ListJoinTokensResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ListJoinTokensResponse) GetTokens() []*JoinTokenInfo {
+	if x != nil {
+		return x.Tokens
+	}
+	return nil
+}
+
+type JoinTokenInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Uses          int32                  `protobuf:"varint,3,opt,name=uses,proto3" json:"uses,omitempty"`
+	MaxUses       int32                  `protobuf:"varint,4,opt,name=max_uses,json=maxUses,proto3" json:"max_uses,omitempty"`       // 0 = unlimited
+	ExpiresAt     int64                  `protobuf:"varint,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // 0 = never
+	Revoked       bool                   `protobuf:"varint,6,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinTokenInfo) Reset() {
+	*x = JoinTokenInfo{}
+	mi := &file_management_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinTokenInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinTokenInfo) ProtoMessage() {}
+
+func (x *JoinTokenInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinTokenInfo.ProtoReflect.Descriptor instead.
+func (*JoinTokenInfo) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *JoinTokenInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *JoinTokenInfo) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *JoinTokenInfo) GetUses() int32 {
+	if x != nil {
+		return x.Uses
+	}
+	return 0
+}
+
+func (x *JoinTokenInfo) GetMaxUses() int32 {
+	if x != nil {
+		return x.MaxUses
+	}
+	return 0
+}
+
+func (x *JoinTokenInfo) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+func (x *JoinTokenInfo) GetRevoked() bool {
+	if x != nil {
+		return x.Revoked
+	}
+	return false
+}
+
+type RevokeJoinTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeJoinTokenRequest) Reset() {
+	*x = RevokeJoinTokenRequest{}
+	mi := &file_management_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeJoinTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeJoinTokenRequest) ProtoMessage() {}
+
+func (x *RevokeJoinTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeJoinTokenRequest.ProtoReflect.Descriptor instead.
+func (*RevokeJoinTokenRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RevokeJoinTokenRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type RevokeJoinTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeJoinTokenResponse) Reset() {
+	*x = RevokeJoinTokenResponse{}
+	mi := &file_management_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeJoinTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeJoinTokenResponse) ProtoMessage() {}
+
+func (x *RevokeJoinTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeJoinTokenResponse.ProtoReflect.Descriptor instead.
+func (*RevokeJoinTokenResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *RevokeJoinTokenResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RevokeJoinTokenResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type JoinAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JoinToken     string                 `protobuf:"bytes,1,opt,name=join_token,json=joinToken,proto3" json:"join_token,omitempty"` // full plaintext token
+	NodeName      string                 `protobuf:"bytes,2,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`    // desired name (defaults to hostname)
+	Info          *control.NodeInfo      `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinAgentRequest) Reset() {
+	*x = JoinAgentRequest{}
+	mi := &file_management_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinAgentRequest) ProtoMessage() {}
+
+func (x *JoinAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinAgentRequest.ProtoReflect.Descriptor instead.
+func (*JoinAgentRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *JoinAgentRequest) GetJoinToken() string {
+	if x != nil {
+		return x.JoinToken
+	}
+	return ""
+}
+
+func (x *JoinAgentRequest) GetNodeName() string {
+	if x != nil {
+		return x.NodeName
+	}
+	return ""
+}
+
+func (x *JoinAgentRequest) GetInfo() *control.NodeInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+type JoinAgentResponse struct {
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	Success                  bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error                    string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	AgentToken               string                 `protobuf:"bytes,3,opt,name=agent_token,json=agentToken,proto3" json:"agent_token,omitempty"` // JWT for subsequent Connect calls
+	NodeId                   string                 `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`             // assigned stable node ID
+	CaCertPem                string                 `protobuf:"bytes,5,opt,name=ca_cert_pem,json=caCertPem,proto3" json:"ca_cert_pem,omitempty"`  // CA certificate PEM (empty if TLS disabled)
+	HeartbeatIntervalSeconds int32                  `protobuf:"varint,6,opt,name=heartbeat_interval_seconds,json=heartbeatIntervalSeconds,proto3" json:"heartbeat_interval_seconds,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *JoinAgentResponse) Reset() {
+	*x = JoinAgentResponse{}
+	mi := &file_management_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinAgentResponse) ProtoMessage() {}
+
+func (x *JoinAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinAgentResponse.ProtoReflect.Descriptor instead.
+func (*JoinAgentResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *JoinAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *JoinAgentResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *JoinAgentResponse) GetAgentToken() string {
+	if x != nil {
+		return x.AgentToken
+	}
+	return ""
+}
+
+func (x *JoinAgentResponse) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *JoinAgentResponse) GetCaCertPem() string {
+	if x != nil {
+		return x.CaCertPem
+	}
+	return ""
+}
+
+func (x *JoinAgentResponse) GetHeartbeatIntervalSeconds() int32 {
+	if x != nil {
+		return x.HeartbeatIntervalSeconds
+	}
+	return 0
+}
+
 var File_management_proto protoreflect.FileDescriptor
 
 const file_management_proto_rawDesc = "" +
@@ -1343,7 +1851,43 @@ const file_management_proto_rawDesc = "" +
 	"created_at\x18\x03 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\x03R\tupdatedAt\x12\x1a\n" +
-	"\bdisabled\x18\x05 \x01(\bR\bdisabled2\xde\x06\n" +
+	"\bdisabled\x18\x05 \x01(\bR\bdisabled\"\\\n" +
+	"\x16CreateJoinTokenRequest\x12\x19\n" +
+	"\bmax_uses\x18\x01 \x01(\x05R\amaxUses\x12'\n" +
+	"\x0fexpires_seconds\x18\x02 \x01(\x03R\x0eexpiresSeconds\"?\n" +
+	"\x17CreateJoinTokenResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\x17\n" +
+	"\x15ListJoinTokensRequest\"P\n" +
+	"\x16ListJoinTokensResponse\x126\n" +
+	"\x06tokens\x18\x01 \x03(\v2\x1e.axon.management.JoinTokenInfoR\x06tokens\"\xa6\x01\n" +
+	"\rJoinTokenInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x02 \x01(\x03R\tcreatedAt\x12\x12\n" +
+	"\x04uses\x18\x03 \x01(\x05R\x04uses\x12\x19\n" +
+	"\bmax_uses\x18\x04 \x01(\x05R\amaxUses\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\x03R\texpiresAt\x12\x18\n" +
+	"\arevoked\x18\x06 \x01(\bR\arevoked\"(\n" +
+	"\x16RevokeJoinTokenRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"I\n" +
+	"\x17RevokeJoinTokenResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"z\n" +
+	"\x10JoinAgentRequest\x12\x1d\n" +
+	"\n" +
+	"join_token\x18\x01 \x01(\tR\tjoinToken\x12\x1b\n" +
+	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12*\n" +
+	"\x04info\x18\x03 \x01(\v2\x16.axon.control.NodeInfoR\x04info\"\xdb\x01\n" +
+	"\x11JoinAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12\x1f\n" +
+	"\vagent_token\x18\x03 \x01(\tR\n" +
+	"agentToken\x12\x17\n" +
+	"\anode_id\x18\x04 \x01(\tR\x06nodeId\x12\x1e\n" +
+	"\vca_cert_pem\x18\x05 \x01(\tR\tcaCertPem\x12<\n" +
+	"\x1aheartbeat_interval_seconds\x18\x06 \x01(\x05R\x18heartbeatIntervalSeconds2\xe1\t\n" +
 	"\x11ManagementService\x12R\n" +
 	"\tListNodes\x12!.axon.management.ListNodesRequest\x1a\".axon.management.ListNodesResponse\x12L\n" +
 	"\aGetNode\x12\x1f.axon.management.GetNodeRequest\x1a .axon.management.GetNodeResponse\x12U\n" +
@@ -1359,7 +1903,11 @@ const file_management_proto_rawDesc = "" +
 	"UpdateUser\x12\".axon.management.UpdateUserRequest\x1a#.axon.management.UpdateUserResponse\x12U\n" +
 	"\n" +
 	"DeleteUser\x12\".axon.management.DeleteUserRequest\x1a#.axon.management.DeleteUserResponse\x12R\n" +
-	"\tListUsers\x12!.axon.management.ListUsersRequest\x1a\".axon.management.ListUsersResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
+	"\tListUsers\x12!.axon.management.ListUsersRequest\x1a\".axon.management.ListUsersResponse\x12d\n" +
+	"\x0fCreateJoinToken\x12'.axon.management.CreateJoinTokenRequest\x1a(.axon.management.CreateJoinTokenResponse\x12a\n" +
+	"\x0eListJoinTokens\x12&.axon.management.ListJoinTokensRequest\x1a'.axon.management.ListJoinTokensResponse\x12d\n" +
+	"\x0fRevokeJoinToken\x12'.axon.management.RevokeJoinTokenRequest\x1a(.axon.management.RevokeJoinTokenResponse\x12R\n" +
+	"\tJoinAgent\x12!.axon.management.JoinAgentRequest\x1a\".axon.management.JoinAgentResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
 
 var (
 	file_management_proto_rawDescOnce sync.Once
@@ -1373,66 +1921,86 @@ func file_management_proto_rawDescGZIP() []byte {
 	return file_management_proto_rawDescData
 }
 
-var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_management_proto_goTypes = []any{
-	(*ListNodesRequest)(nil),    // 0: axon.management.ListNodesRequest
-	(*ListNodesResponse)(nil),   // 1: axon.management.ListNodesResponse
-	(*NodeSummary)(nil),         // 2: axon.management.NodeSummary
-	(*GetNodeRequest)(nil),      // 3: axon.management.GetNodeRequest
-	(*GetNodeResponse)(nil),     // 4: axon.management.GetNodeResponse
-	(*RemoveNodeRequest)(nil),   // 5: axon.management.RemoveNodeRequest
-	(*RemoveNodeResponse)(nil),  // 6: axon.management.RemoveNodeResponse
-	(*LoginRequest)(nil),        // 7: axon.management.LoginRequest
-	(*LoginResponse)(nil),       // 8: axon.management.LoginResponse
-	(*RevokeTokenRequest)(nil),  // 9: axon.management.RevokeTokenRequest
-	(*RevokeTokenResponse)(nil), // 10: axon.management.RevokeTokenResponse
-	(*ListTokensRequest)(nil),   // 11: axon.management.ListTokensRequest
-	(*ListTokensResponse)(nil),  // 12: axon.management.ListTokensResponse
-	(*TokenInfo)(nil),           // 13: axon.management.TokenInfo
-	(*CreateUserRequest)(nil),   // 14: axon.management.CreateUserRequest
-	(*CreateUserResponse)(nil),  // 15: axon.management.CreateUserResponse
-	(*UpdateUserRequest)(nil),   // 16: axon.management.UpdateUserRequest
-	(*UpdateUserResponse)(nil),  // 17: axon.management.UpdateUserResponse
-	(*DeleteUserRequest)(nil),   // 18: axon.management.DeleteUserRequest
-	(*DeleteUserResponse)(nil),  // 19: axon.management.DeleteUserResponse
-	(*ListUsersRequest)(nil),    // 20: axon.management.ListUsersRequest
-	(*ListUsersResponse)(nil),   // 21: axon.management.ListUsersResponse
-	(*UserInfo)(nil),            // 22: axon.management.UserInfo
-	nil,                         // 23: axon.management.GetNodeResponse.LabelsEntry
-	(*control.OSInfo)(nil),      // 24: axon.control.OSInfo
+	(*ListNodesRequest)(nil),        // 0: axon.management.ListNodesRequest
+	(*ListNodesResponse)(nil),       // 1: axon.management.ListNodesResponse
+	(*NodeSummary)(nil),             // 2: axon.management.NodeSummary
+	(*GetNodeRequest)(nil),          // 3: axon.management.GetNodeRequest
+	(*GetNodeResponse)(nil),         // 4: axon.management.GetNodeResponse
+	(*RemoveNodeRequest)(nil),       // 5: axon.management.RemoveNodeRequest
+	(*RemoveNodeResponse)(nil),      // 6: axon.management.RemoveNodeResponse
+	(*LoginRequest)(nil),            // 7: axon.management.LoginRequest
+	(*LoginResponse)(nil),           // 8: axon.management.LoginResponse
+	(*RevokeTokenRequest)(nil),      // 9: axon.management.RevokeTokenRequest
+	(*RevokeTokenResponse)(nil),     // 10: axon.management.RevokeTokenResponse
+	(*ListTokensRequest)(nil),       // 11: axon.management.ListTokensRequest
+	(*ListTokensResponse)(nil),      // 12: axon.management.ListTokensResponse
+	(*TokenInfo)(nil),               // 13: axon.management.TokenInfo
+	(*CreateUserRequest)(nil),       // 14: axon.management.CreateUserRequest
+	(*CreateUserResponse)(nil),      // 15: axon.management.CreateUserResponse
+	(*UpdateUserRequest)(nil),       // 16: axon.management.UpdateUserRequest
+	(*UpdateUserResponse)(nil),      // 17: axon.management.UpdateUserResponse
+	(*DeleteUserRequest)(nil),       // 18: axon.management.DeleteUserRequest
+	(*DeleteUserResponse)(nil),      // 19: axon.management.DeleteUserResponse
+	(*ListUsersRequest)(nil),        // 20: axon.management.ListUsersRequest
+	(*ListUsersResponse)(nil),       // 21: axon.management.ListUsersResponse
+	(*UserInfo)(nil),                // 22: axon.management.UserInfo
+	(*CreateJoinTokenRequest)(nil),  // 23: axon.management.CreateJoinTokenRequest
+	(*CreateJoinTokenResponse)(nil), // 24: axon.management.CreateJoinTokenResponse
+	(*ListJoinTokensRequest)(nil),   // 25: axon.management.ListJoinTokensRequest
+	(*ListJoinTokensResponse)(nil),  // 26: axon.management.ListJoinTokensResponse
+	(*JoinTokenInfo)(nil),           // 27: axon.management.JoinTokenInfo
+	(*RevokeJoinTokenRequest)(nil),  // 28: axon.management.RevokeJoinTokenRequest
+	(*RevokeJoinTokenResponse)(nil), // 29: axon.management.RevokeJoinTokenResponse
+	(*JoinAgentRequest)(nil),        // 30: axon.management.JoinAgentRequest
+	(*JoinAgentResponse)(nil),       // 31: axon.management.JoinAgentResponse
+	nil,                             // 32: axon.management.GetNodeResponse.LabelsEntry
+	(*control.OSInfo)(nil),          // 33: axon.control.OSInfo
+	(*control.NodeInfo)(nil),        // 34: axon.control.NodeInfo
 }
 var file_management_proto_depIdxs = []int32{
 	2,  // 0: axon.management.ListNodesResponse.nodes:type_name -> axon.management.NodeSummary
-	24, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
+	33, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
 	2,  // 2: axon.management.GetNodeResponse.summary:type_name -> axon.management.NodeSummary
-	23, // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
+	32, // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
 	13, // 4: axon.management.ListTokensResponse.tokens:type_name -> axon.management.TokenInfo
 	22, // 5: axon.management.ListUsersResponse.users:type_name -> axon.management.UserInfo
-	0,  // 6: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
-	3,  // 7: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
-	5,  // 8: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
-	7,  // 9: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
-	9,  // 10: axon.management.ManagementService.RevokeToken:input_type -> axon.management.RevokeTokenRequest
-	11, // 11: axon.management.ManagementService.ListTokens:input_type -> axon.management.ListTokensRequest
-	14, // 12: axon.management.ManagementService.CreateUser:input_type -> axon.management.CreateUserRequest
-	16, // 13: axon.management.ManagementService.UpdateUser:input_type -> axon.management.UpdateUserRequest
-	18, // 14: axon.management.ManagementService.DeleteUser:input_type -> axon.management.DeleteUserRequest
-	20, // 15: axon.management.ManagementService.ListUsers:input_type -> axon.management.ListUsersRequest
-	1,  // 16: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
-	4,  // 17: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
-	6,  // 18: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
-	8,  // 19: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
-	10, // 20: axon.management.ManagementService.RevokeToken:output_type -> axon.management.RevokeTokenResponse
-	12, // 21: axon.management.ManagementService.ListTokens:output_type -> axon.management.ListTokensResponse
-	15, // 22: axon.management.ManagementService.CreateUser:output_type -> axon.management.CreateUserResponse
-	17, // 23: axon.management.ManagementService.UpdateUser:output_type -> axon.management.UpdateUserResponse
-	19, // 24: axon.management.ManagementService.DeleteUser:output_type -> axon.management.DeleteUserResponse
-	21, // 25: axon.management.ManagementService.ListUsers:output_type -> axon.management.ListUsersResponse
-	16, // [16:26] is the sub-list for method output_type
-	6,  // [6:16] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	27, // 6: axon.management.ListJoinTokensResponse.tokens:type_name -> axon.management.JoinTokenInfo
+	34, // 7: axon.management.JoinAgentRequest.info:type_name -> axon.control.NodeInfo
+	0,  // 8: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
+	3,  // 9: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
+	5,  // 10: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
+	7,  // 11: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
+	9,  // 12: axon.management.ManagementService.RevokeToken:input_type -> axon.management.RevokeTokenRequest
+	11, // 13: axon.management.ManagementService.ListTokens:input_type -> axon.management.ListTokensRequest
+	14, // 14: axon.management.ManagementService.CreateUser:input_type -> axon.management.CreateUserRequest
+	16, // 15: axon.management.ManagementService.UpdateUser:input_type -> axon.management.UpdateUserRequest
+	18, // 16: axon.management.ManagementService.DeleteUser:input_type -> axon.management.DeleteUserRequest
+	20, // 17: axon.management.ManagementService.ListUsers:input_type -> axon.management.ListUsersRequest
+	23, // 18: axon.management.ManagementService.CreateJoinToken:input_type -> axon.management.CreateJoinTokenRequest
+	25, // 19: axon.management.ManagementService.ListJoinTokens:input_type -> axon.management.ListJoinTokensRequest
+	28, // 20: axon.management.ManagementService.RevokeJoinToken:input_type -> axon.management.RevokeJoinTokenRequest
+	30, // 21: axon.management.ManagementService.JoinAgent:input_type -> axon.management.JoinAgentRequest
+	1,  // 22: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
+	4,  // 23: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
+	6,  // 24: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
+	8,  // 25: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
+	10, // 26: axon.management.ManagementService.RevokeToken:output_type -> axon.management.RevokeTokenResponse
+	12, // 27: axon.management.ManagementService.ListTokens:output_type -> axon.management.ListTokensResponse
+	15, // 28: axon.management.ManagementService.CreateUser:output_type -> axon.management.CreateUserResponse
+	17, // 29: axon.management.ManagementService.UpdateUser:output_type -> axon.management.UpdateUserResponse
+	19, // 30: axon.management.ManagementService.DeleteUser:output_type -> axon.management.DeleteUserResponse
+	21, // 31: axon.management.ManagementService.ListUsers:output_type -> axon.management.ListUsersResponse
+	24, // 32: axon.management.ManagementService.CreateJoinToken:output_type -> axon.management.CreateJoinTokenResponse
+	26, // 33: axon.management.ManagementService.ListJoinTokens:output_type -> axon.management.ListJoinTokensResponse
+	29, // 34: axon.management.ManagementService.RevokeJoinToken:output_type -> axon.management.RevokeJoinTokenResponse
+	31, // 35: axon.management.ManagementService.JoinAgent:output_type -> axon.management.JoinAgentResponse
+	22, // [22:36] is the sub-list for method output_type
+	8,  // [8:22] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_management_proto_init() }
@@ -1446,7 +2014,7 @@ func file_management_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_management_proto_rawDesc), len(file_management_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

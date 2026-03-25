@@ -16,6 +16,14 @@ service ManagementService {
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // ─── Join Token Management (requires JWT auth) ───
+  rpc CreateJoinToken(CreateJoinTokenRequest) returns (CreateJoinTokenResponse);
+  rpc ListJoinTokens(ListJoinTokensRequest) returns (ListJoinTokensResponse);
+  rpc RevokeJoinToken(RevokeJoinTokenRequest) returns (RevokeJoinTokenResponse);
+
+  // ─── Agent Join (no auth required — token is self-authenticating) ───
+  rpc JoinAgent(JoinAgentRequest) returns (JoinAgentResponse);
 }
 
 // ─── Node Management ───
@@ -142,4 +150,55 @@ message UserInfo {
   int64 created_at = 3;       // Unix timestamp
   int64 updated_at = 4;       // Unix timestamp
   bool disabled = 5;
+}
+
+// ─── Join Token Management ───
+
+message CreateJoinTokenRequest {
+  int32 max_uses = 1;         // 0 = unlimited
+  int64 expires_seconds = 2;  // 0 = never; seconds from now
+}
+
+message CreateJoinTokenResponse {
+  string token = 1;           // full plaintext token (shown once)
+  string id = 2;              // short ID for management
+}
+
+message ListJoinTokensRequest {}
+
+message ListJoinTokensResponse {
+  repeated JoinTokenInfo tokens = 1;
+}
+
+message JoinTokenInfo {
+  string id = 1;
+  int64 created_at = 2;
+  int32 uses = 3;
+  int32 max_uses = 4;         // 0 = unlimited
+  int64 expires_at = 5;       // 0 = never
+  bool revoked = 6;
+}
+
+message RevokeJoinTokenRequest {
+  string id = 1;
+}
+
+message RevokeJoinTokenResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message JoinAgentRequest {
+  string join_token = 1;      // full plaintext token
+  string node_name = 2;       // desired name (defaults to hostname)
+  axon.control.NodeInfo info = 3;
+}
+
+message JoinAgentResponse {
+  bool success = 1;
+  string error = 2;
+  string agent_token = 3;     // JWT for subsequent Connect calls
+  string node_id = 4;         // assigned stable node ID
+  string ca_cert_pem = 5;     // CA certificate PEM (empty if TLS disabled)
+  int32 heartbeat_interval_seconds = 6;
 }
