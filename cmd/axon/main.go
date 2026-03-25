@@ -94,8 +94,12 @@ func configGetCmd() *cobra.Command {
 				fmt.Println(display.MaskToken(cfg.Token))
 			case "output_format":
 				fmt.Println(cfg.OutputFormat)
+			case "ca_cert":
+				fmt.Println(cfg.CACert)
+			case "tls_insecure":
+				fmt.Println(cfg.TLSInsecure)
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format)", key)
+				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format, ca_cert, tls_insecure)", key)
 			}
 			return nil
 		},
@@ -123,8 +127,12 @@ func configSetCmd() *cobra.Command {
 				cfg.Token = value
 			case "output_format":
 				cfg.OutputFormat = value
+			case "ca_cert":
+				cfg.CACert = value
+			case "tls_insecure":
+				cfg.TLSInsecure = value == "true" || value == "1"
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format)", key)
+				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format, ca_cert, tls_insecure)", key)
 			}
 			if err := config.SaveCLIConfig(cfgPath, cfg); err != nil {
 				return fmt.Errorf("save config: %w", err)

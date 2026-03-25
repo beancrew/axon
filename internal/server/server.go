@@ -140,13 +140,18 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 			host != "" && host != "0.0.0.0" && host != "::" {
 			hostname = host
 		}
-		paths, err := autotls.EnsureTLS(tlsDir, hostname)
+		caCertPath, serverCertPath, serverKeyPath, generated, err := autotls.EnsureTLS(tlsDir, hostname)
 		if err != nil {
 			return fmt.Errorf("server: auto-TLS: %w", err)
 		}
-		s.cfg.TLSCertPath = paths.ServerCert
-		s.cfg.TLSKeyPath = paths.ServerKey
-		log.Printf("server: TLS enabled; CA cert: %s", paths.CACert)
+		s.cfg.TLSCertPath = serverCertPath
+		s.cfg.TLSKeyPath = serverKeyPath
+		if generated {
+			fp, _ := autotls.CAFingerprint(caCertPath)
+			log.Printf("server: auto-TLS: generated CA cert %s (SHA-256: %s)", caCertPath, fp)
+		} else {
+			log.Printf("server: auto-TLS: using existing CA cert %s", caCertPath)
+		}
 	}
 
 	// Build gRPC server with interceptors that check revoked tokens.
