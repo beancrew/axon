@@ -15,6 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/garysng/axon/internal/server"
+	"github.com/garysng/axon/pkg/auth"
 )
 
 var version = "dev"
@@ -144,9 +145,9 @@ func loadServerConfig(path string) (*server.ServerConfig, error) {
 		return nil, fmt.Errorf("heartbeat.timeout: %w", err)
 	}
 
-	users := make([]server.UserEntry, len(fc.Users))
+	users := make([]auth.UserEntry, len(fc.Users))
 	for i, u := range fc.Users {
-		users[i] = server.UserEntry{
+		users[i] = auth.UserEntry{
 			Username:     u.Username,
 			PasswordHash: u.PasswordHash,
 			NodeIDs:      u.NodeIDs,
