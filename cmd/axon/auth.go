@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -22,7 +24,7 @@ func authCmd() *cobra.Command {
 		Use:   "auth",
 		Short: "Authentication commands",
 	}
-	cmd.AddCommand(authLoginCmd(), authTokenCmd())
+	cmd.AddCommand(authLoginCmd(), authTokenCmd(), revokeTokenCmd(), listTokensCmd(), rotateTokenCmd())
 	return cmd
 }
 
@@ -121,6 +123,93 @@ func authTokenCmd() *cobra.Command {
 				return fmt.Errorf("not authenticated; run: axon auth login")
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), cfg.Token)
+			return nil
+		},
+	}
+}
+
+// ── auth revoke ────────────────────────────────────────────────────────────
+
+func revokeTokenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "revoke <token-id>",
+		Short: "Revoke a token by its ID (jti)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, closer, err := dialManagement()
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer cancel()
+
+			resp, err := client.RevokeToken(ctx, &managementpb.RevokeTokenRequest{
+				TokenId: args[0],
+			})
+			if err != nil {
+				return fmt.Errorf("revoke: %w", err)
+			}
+			if !resp.Success {
+				return fmt.Errorf("revoke failed: %s", resp.Error)
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Token revoked successfully.")
+			return nil
+		},
+	}
+}
+
+// ── auth list-tokens ───────────────────────────────────────────────────────
+
+func listTokensCmd() *cobra.Command {
+	var kind string
+
+	cmd := &cobra.Command{
+		Use:   "list-tokens",
+		Short: "List active (non-revoked, non-expired) tokens",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, closer, err := dialManagement()
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer cancel()
+
+			resp, err := client.ListTokens(ctx, &managementpb.ListTokensRequest{
+				Kind: kind,
+			})
+			if err != nil {
+				return fmt.Errorf("list-tokens: %w", err)
+			}
+
+			if len(resp.Tokens) == 0 {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No active tokens.")
+				return nil
+			}
+
+			for _, t := range resp.Tokens {
+				expires := time.Unix(t.ExpiresAt, 0).Format(time.RFC3339)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%-36s  %-6s  %-12s  expires=%s\n",
+					t.Id, t.Kind, t.UserId, expires)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&kind, "kind", "", "filter by token kind (cli, agent)")
+	return cmd
+}
+
+// ── auth rotate ────────────────────────────────────────────────────────────
+
+func rotateTokenCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rotate",
+		Short: "[not yet implemented] Revoke current token and login again for a new one",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "[not yet implemented] Token rotation requires re-login. Use: axon auth login && axon auth revoke <old-token-id>")
 			return nil
 		},
 	}

@@ -44,7 +44,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	srv.registry = registry.NewRegistry(cfg.HeartbeatTimeout)
 	srv.control = newControlService(srv.registry, cfg)
 
-	opts, err := srv.buildServerOptions()
+	opts, err := srv.buildServerOptions(nil)
 	if err != nil {
 		t.Fatalf("buildServerOptions: %v", err)
 	}
@@ -90,7 +90,7 @@ func newTestEnv(t *testing.T) *testEnv {
 // validAgentToken generates a short-lived agent token for testing.
 func validAgentToken(t *testing.T) string {
 	t.Helper()
-	tok, err := auth.SignAgentToken(testSecret, "pre-node", time.Hour)
+	tok, _, err := auth.SignAgentToken(testSecret, "pre-node", time.Hour)
 	if err != nil {
 		t.Fatalf("SignAgentToken: %v", err)
 	}

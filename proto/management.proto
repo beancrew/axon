@@ -10,6 +10,8 @@ service ManagementService {
   rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
   rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
 }
 
 // ─── Node Management ───
@@ -62,4 +64,31 @@ message LoginResponse {
   string token = 1;           // JWT token
   int64 expires_at = 2;       // Unix timestamp
   string error = 3;
+}
+
+// ─── Token Management ───
+
+message RevokeTokenRequest {
+  string token_id = 1;       // JWT ID (jti)
+}
+
+message RevokeTokenResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListTokensRequest {
+  string kind = 1;            // "cli", "agent", or "" for all
+}
+
+message ListTokensResponse {
+  repeated TokenInfo tokens = 1;
+}
+
+message TokenInfo {
+  string id = 1;              // JWT ID (jti)
+  string kind = 2;
+  string user_id = 3;
+  int64 issued_at = 4;
+  int64 expires_at = 5;
 }

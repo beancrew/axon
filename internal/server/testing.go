@@ -12,6 +12,7 @@ import (
 	operationspb "github.com/garysng/axon/gen/proto/operations"
 	"github.com/garysng/axon/internal/server/registry"
 	"github.com/garysng/axon/pkg/audit"
+	"github.com/garysng/axon/pkg/auth"
 )
 
 // ServeListenerReady starts the server on lis and closes the ready channel
@@ -20,15 +21,27 @@ import (
 func (s *Server) ServeListenerReady(ctx context.Context, lis net.Listener, ready chan<- struct{}) error {
 	// Pre-initialise the components that serve() would create, so they are
 	// visible to callers *before* the goroutine starts gRPC serving.
-	opts, err := s.buildServerOptions()
+	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
+	s.control = newControlService(s.registry, s.cfg)
+
+	// Initialize token management for tests.
+	tokenStore, err := auth.NewTokenStore(":memory:")
+	if err != nil {
+		return fmt.Errorf("server: init token store: %w", err)
+	}
+	s.tokenStore = tokenStore
+
+	tokenChecker, err := auth.NewTokenChecker(tokenStore)
+	if err != nil {
+		return fmt.Errorf("server: init token checker: %w", err)
+	}
+	s.tokenChecker = tokenChecker
+
+	opts, err := s.buildServerOptions(tokenChecker)
 	if err != nil {
 		return err
 	}
-
 	s.grpc = grpc.NewServer(opts...)
-
-	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
-	s.control = newControlService(s.registry, s.cfg)
 
 	auditDBPath := s.cfg.AuditDBPath
 	if auditDBPath == "" {
@@ -44,7 +57,7 @@ func (s *Server) ServeListenerReady(ctx context.Context, lis net.Listener, ready
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret)
+	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)

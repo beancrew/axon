@@ -522,6 +522,266 @@ func (x *LoginResponse) GetError() string {
 	return ""
 }
 
+type RevokeTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TokenId       string                 `protobuf:"bytes,1,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"` // JWT ID (jti)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeTokenRequest) Reset() {
+	*x = RevokeTokenRequest{}
+	mi := &file_management_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeTokenRequest) ProtoMessage() {}
+
+func (x *RevokeTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeTokenRequest.ProtoReflect.Descriptor instead.
+func (*RevokeTokenRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RevokeTokenRequest) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
+type RevokeTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeTokenResponse) Reset() {
+	*x = RevokeTokenResponse{}
+	mi := &file_management_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeTokenResponse) ProtoMessage() {}
+
+func (x *RevokeTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeTokenResponse.ProtoReflect.Descriptor instead.
+func (*RevokeTokenResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RevokeTokenResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RevokeTokenResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListTokensRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"` // "cli", "agent", or "" for all
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTokensRequest) Reset() {
+	*x = ListTokensRequest{}
+	mi := &file_management_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTokensRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTokensRequest) ProtoMessage() {}
+
+func (x *ListTokensRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTokensRequest.ProtoReflect.Descriptor instead.
+func (*ListTokensRequest) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListTokensRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+type ListTokensResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tokens        []*TokenInfo           `protobuf:"bytes,1,rep,name=tokens,proto3" json:"tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTokensResponse) Reset() {
+	*x = ListTokensResponse{}
+	mi := &file_management_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTokensResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTokensResponse) ProtoMessage() {}
+
+func (x *ListTokensResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTokensResponse.ProtoReflect.Descriptor instead.
+func (*ListTokensResponse) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListTokensResponse) GetTokens() []*TokenInfo {
+	if x != nil {
+		return x.Tokens
+	}
+	return nil
+}
+
+type TokenInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // JWT ID (jti)
+	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IssuedAt      int64                  `protobuf:"varint,4,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	ExpiresAt     int64                  `protobuf:"varint,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TokenInfo) Reset() {
+	*x = TokenInfo{}
+	mi := &file_management_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TokenInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TokenInfo) ProtoMessage() {}
+
+func (x *TokenInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_management_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TokenInfo.ProtoReflect.Descriptor instead.
+func (*TokenInfo) Descriptor() ([]byte, []int) {
+	return file_management_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *TokenInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TokenInfo) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *TokenInfo) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *TokenInfo) GetIssuedAt() int64 {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return 0
+}
+
+func (x *TokenInfo) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
 var File_management_proto protoreflect.FileDescriptor
 
 const file_management_proto_rawDesc = "" +
@@ -561,13 +821,32 @@ const file_management_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x02 \x01(\x03R\texpiresAt\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error2\xd4\x02\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"/\n" +
+	"\x12RevokeTokenRequest\x12\x19\n" +
+	"\btoken_id\x18\x01 \x01(\tR\atokenId\"E\n" +
+	"\x13RevokeTokenResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"'\n" +
+	"\x11ListTokensRequest\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\"H\n" +
+	"\x12ListTokensResponse\x122\n" +
+	"\x06tokens\x18\x01 \x03(\v2\x1a.axon.management.TokenInfoR\x06tokens\"\x84\x01\n" +
+	"\tTokenInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tissued_at\x18\x04 \x01(\x03R\bissuedAt\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\x03R\texpiresAt2\x85\x04\n" +
 	"\x11ManagementService\x12R\n" +
 	"\tListNodes\x12!.axon.management.ListNodesRequest\x1a\".axon.management.ListNodesResponse\x12L\n" +
 	"\aGetNode\x12\x1f.axon.management.GetNodeRequest\x1a .axon.management.GetNodeResponse\x12U\n" +
 	"\n" +
 	"RemoveNode\x12\".axon.management.RemoveNodeRequest\x1a#.axon.management.RemoveNodeResponse\x12F\n" +
-	"\x05Login\x12\x1d.axon.management.LoginRequest\x1a\x1e.axon.management.LoginResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
+	"\x05Login\x12\x1d.axon.management.LoginRequest\x1a\x1e.axon.management.LoginResponse\x12X\n" +
+	"\vRevokeToken\x12#.axon.management.RevokeTokenRequest\x1a$.axon.management.RevokeTokenResponse\x12U\n" +
+	"\n" +
+	"ListTokens\x12\".axon.management.ListTokensRequest\x1a#.axon.management.ListTokensResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
 
 var (
 	file_management_proto_rawDescOnce sync.Once
@@ -581,38 +860,48 @@ func file_management_proto_rawDescGZIP() []byte {
 	return file_management_proto_rawDescData
 }
 
-var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_management_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_management_proto_goTypes = []any{
-	(*ListNodesRequest)(nil),   // 0: axon.management.ListNodesRequest
-	(*ListNodesResponse)(nil),  // 1: axon.management.ListNodesResponse
-	(*NodeSummary)(nil),        // 2: axon.management.NodeSummary
-	(*GetNodeRequest)(nil),     // 3: axon.management.GetNodeRequest
-	(*GetNodeResponse)(nil),    // 4: axon.management.GetNodeResponse
-	(*RemoveNodeRequest)(nil),  // 5: axon.management.RemoveNodeRequest
-	(*RemoveNodeResponse)(nil), // 6: axon.management.RemoveNodeResponse
-	(*LoginRequest)(nil),       // 7: axon.management.LoginRequest
-	(*LoginResponse)(nil),      // 8: axon.management.LoginResponse
-	nil,                        // 9: axon.management.GetNodeResponse.LabelsEntry
-	(*control.OSInfo)(nil),     // 10: axon.control.OSInfo
+	(*ListNodesRequest)(nil),    // 0: axon.management.ListNodesRequest
+	(*ListNodesResponse)(nil),   // 1: axon.management.ListNodesResponse
+	(*NodeSummary)(nil),         // 2: axon.management.NodeSummary
+	(*GetNodeRequest)(nil),      // 3: axon.management.GetNodeRequest
+	(*GetNodeResponse)(nil),     // 4: axon.management.GetNodeResponse
+	(*RemoveNodeRequest)(nil),   // 5: axon.management.RemoveNodeRequest
+	(*RemoveNodeResponse)(nil),  // 6: axon.management.RemoveNodeResponse
+	(*LoginRequest)(nil),        // 7: axon.management.LoginRequest
+	(*LoginResponse)(nil),       // 8: axon.management.LoginResponse
+	(*RevokeTokenRequest)(nil),  // 9: axon.management.RevokeTokenRequest
+	(*RevokeTokenResponse)(nil), // 10: axon.management.RevokeTokenResponse
+	(*ListTokensRequest)(nil),   // 11: axon.management.ListTokensRequest
+	(*ListTokensResponse)(nil),  // 12: axon.management.ListTokensResponse
+	(*TokenInfo)(nil),           // 13: axon.management.TokenInfo
+	nil,                         // 14: axon.management.GetNodeResponse.LabelsEntry
+	(*control.OSInfo)(nil),      // 15: axon.control.OSInfo
 }
 var file_management_proto_depIdxs = []int32{
 	2,  // 0: axon.management.ListNodesResponse.nodes:type_name -> axon.management.NodeSummary
-	10, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
+	15, // 1: axon.management.NodeSummary.os_info:type_name -> axon.control.OSInfo
 	2,  // 2: axon.management.GetNodeResponse.summary:type_name -> axon.management.NodeSummary
-	9,  // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
-	0,  // 4: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
-	3,  // 5: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
-	5,  // 6: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
-	7,  // 7: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
-	1,  // 8: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
-	4,  // 9: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
-	6,  // 10: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
-	8,  // 11: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	14, // 3: axon.management.GetNodeResponse.labels:type_name -> axon.management.GetNodeResponse.LabelsEntry
+	13, // 4: axon.management.ListTokensResponse.tokens:type_name -> axon.management.TokenInfo
+	0,  // 5: axon.management.ManagementService.ListNodes:input_type -> axon.management.ListNodesRequest
+	3,  // 6: axon.management.ManagementService.GetNode:input_type -> axon.management.GetNodeRequest
+	5,  // 7: axon.management.ManagementService.RemoveNode:input_type -> axon.management.RemoveNodeRequest
+	7,  // 8: axon.management.ManagementService.Login:input_type -> axon.management.LoginRequest
+	9,  // 9: axon.management.ManagementService.RevokeToken:input_type -> axon.management.RevokeTokenRequest
+	11, // 10: axon.management.ManagementService.ListTokens:input_type -> axon.management.ListTokensRequest
+	1,  // 11: axon.management.ManagementService.ListNodes:output_type -> axon.management.ListNodesResponse
+	4,  // 12: axon.management.ManagementService.GetNode:output_type -> axon.management.GetNodeResponse
+	6,  // 13: axon.management.ManagementService.RemoveNode:output_type -> axon.management.RemoveNodeResponse
+	8,  // 14: axon.management.ManagementService.Login:output_type -> axon.management.LoginResponse
+	10, // 15: axon.management.ManagementService.RevokeToken:output_type -> axon.management.RevokeTokenResponse
+	12, // 16: axon.management.ManagementService.ListTokens:output_type -> axon.management.ListTokensResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_management_proto_init() }
@@ -626,7 +915,7 @@ func file_management_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_management_proto_rawDesc), len(file_management_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
