@@ -6,7 +6,10 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"time"
 
 	"google.golang.org/grpc"
@@ -20,6 +23,7 @@ import (
 	"github.com/garysng/axon/internal/server/registry"
 	"github.com/garysng/axon/pkg/audit"
 	"github.com/garysng/axon/pkg/auth"
+	autotls "github.com/garysng/axon/pkg/tls"
 )
 
 // ServerConfig holds configuration for the gRPC server.
@@ -27,6 +31,8 @@ type ServerConfig struct {
 	ListenAddr        string
 	TLSCertPath       string
 	TLSKeyPath        string
+	TLSAuto           bool   // auto-generate self-signed CA + server cert if no explicit cert is set
+	TLSDir            string // directory for auto-generated TLS files; defaults to ~/.axon-server/tls
 	JWTSecret         string
 	HeartbeatInterval time.Duration
 	HeartbeatTimeout  time.Duration
@@ -114,6 +120,38 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	// since user management RPCs require authentication.
 	for i := range s.cfg.Users {
 		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
+	}
+
+	// Auto-TLS: generate a self-signed CA + server cert when enabled and no
+	// explicit cert/key paths are configured.
+	if s.cfg.TLSAuto && s.cfg.TLSCertPath == "" {
+		tlsDir := s.cfg.TLSDir
+		if tlsDir == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("server: resolve home dir for TLS: %w", err)
+			}
+			tlsDir = filepath.Join(home, ".axon-server", "tls")
+		}
+		// Use the listen address host as the server cert CN/SAN when it is a
+		// specific hostname rather than a wildcard bind address.
+		hostname := "localhost"
+		if host, _, err := net.SplitHostPort(s.cfg.ListenAddr); err == nil &&
+			host != "" && host != "0.0.0.0" && host != "::" {
+			hostname = host
+		}
+		caCertPath, serverCertPath, serverKeyPath, generated, err := autotls.EnsureTLS(tlsDir, hostname)
+		if err != nil {
+			return fmt.Errorf("server: auto-TLS: %w", err)
+		}
+		s.cfg.TLSCertPath = serverCertPath
+		s.cfg.TLSKeyPath = serverKeyPath
+		if generated {
+			fp, _ := autotls.CAFingerprint(caCertPath)
+			log.Printf("server: auto-TLS: generated CA cert %s (SHA-256: %s)", caCertPath, fp)
+		} else {
+			log.Printf("server: auto-TLS: using existing CA cert %s", caCertPath)
+		}
 	}
 
 	// Build gRPC server with interceptors that check revoked tokens.

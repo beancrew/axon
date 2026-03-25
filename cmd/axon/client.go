@@ -8,8 +8,16 @@ import (
 	operationspb "github.com/garysng/axon/gen/proto/operations"
 	"github.com/garysng/axon/pkg/config"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+)
+
+// globalCACert and globalTLSInsecure are set by persistent root flags (--ca-cert,
+// --tls-insecure) and override values read from the CLI config file.
+var (
+	globalCACert      string
+	globalTLSInsecure bool
 )
 
 // dialConn creates a gRPC connection to the Axon server using CLI config.
@@ -24,9 +32,29 @@ func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 		return nil, nil, fmt.Errorf("server address not configured; run: axon config set server <addr>")
 	}
 
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	// Flags override config-file values.
+	if globalCACert != "" {
+		cfg.CACert = globalCACert
 	}
+	if globalTLSInsecure {
+		cfg.TLSInsecure = true
+	}
+
+	var transportOpt grpc.DialOption
+	switch {
+	case cfg.TLSInsecure:
+		transportOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
+	case cfg.CACert != "":
+		creds, err := credentials.NewClientTLSFromFile(cfg.CACert, "")
+		if err != nil {
+			return nil, nil, fmt.Errorf("load CA cert %q: %w", cfg.CACert, err)
+		}
+		transportOpt = grpc.WithTransportCredentials(creds)
+	default:
+		transportOpt = grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	}
+
+	opts := []grpc.DialOption{transportOpt}
 
 	if withAuth {
 		if cfg.Token == "" {

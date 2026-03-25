@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"runtime"
@@ -94,6 +95,8 @@ type fileConfig struct {
 }
 
 type tlsConfig struct {
+	Auto *bool  `yaml:"auto"`  // pointer to distinguish unset from explicit false
+	Dir  string `yaml:"dir"`
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
 }
@@ -154,10 +157,26 @@ func loadServerConfig(path string) (*server.ServerConfig, error) {
 		}
 	}
 
+	// TLSAuto defaults to true when no explicit cert/key is provided.
+	// Set tls.auto: false in the config file to disable auto-TLS entirely.
+	var tlsAuto bool
+	if fc.TLS.Auto != nil {
+		// Explicit setting: honor it.
+		tlsAuto = *fc.TLS.Auto
+	} else {
+		// Not set: auto-generate when no cert/key configured.
+		tlsAuto = fc.TLS.Cert == "" && fc.TLS.Key == ""
+	}
+	if !tlsAuto && fc.TLS.Cert == "" && fc.TLS.Key == "" {
+		log.Println("WARNING: TLS disabled (tls.auto: false) with no cert/key — connections will be unencrypted")
+	}
+
 	cfg := &server.ServerConfig{
 		ListenAddr:        fc.Listen,
 		TLSCertPath:       fc.TLS.Cert,
 		TLSKeyPath:        fc.TLS.Key,
+		TLSAuto:           tlsAuto,
+		TLSDir:            fc.TLS.Dir,
 		JWTSecret:         strings.TrimSpace(fc.Auth.JWTSigningKey),
 		HeartbeatInterval: hbInterval,
 		HeartbeatTimeout:  hbTimeout,
