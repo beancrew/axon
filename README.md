@@ -156,36 +156,53 @@ Different scenario? Different skill. Same CLI.
 
 ## Security
 
-- **Token-based auth** — Server issues tokens, agents present tokens
+- **Token-based auth** — JWT with unique JTI, revocation support
+- **User management** — SQLite-backed users with bcrypt passwords, CRUD via CLI
 - **Audit log** — Every operation logged with timestamp, caller, node, command, result
 - **No inbound ports on nodes** — Reverse connection only
-- **TLS everywhere** — Server ↔ Agent, CLI ↔ Server
+- **Auto-TLS** — Self-signed CA + server cert generated automatically; bring-your-own-cert supported
+- **Token lifecycle** — List, revoke, and rotate tokens via CLI
 
 ## Roadmap
 
-### Phase 1: Foundation
-- [x] axon-server: gRPC server, node registry, auth
-- [ ] axon-agent: reverse connection, command execution, file I/O
-- [ ] axon CLI: exec, read, write, forward, node management
-- [x] Token-based authentication
-- [x] Audit logging
+### Phase 1: Foundation ✅
+- [x] axon-server: gRPC server, node registry, auth, routing, audit
+- [x] axon-agent: reverse connection, exec, read, write, forward
+- [x] axon CLI: full command set (exec, read, write, forward, node management)
+- [x] Token-based authentication (JWT)
+- [x] Audit logging (SQLite)
+- [x] Data plane bridge (CLI ↔ Server ↔ Agent streaming)
 
-### Phase 2: Production Hardening
-- [ ] Agent auto-update
-- [ ] Connection multiplexing
-- [ ] Rate limiting and resource quotas
-- [ ] Multi-tenant support
+### Phase 2: Production Hardening (in progress)
+- [x] P2-1: Registry SQLite persistence + stable node_id
+- [x] P2-2: Token management (JTI, revoke, list)
+- [x] P2-3: User store persistence (SQLite CRUD, bootstrap from config)
+- [x] P2-4: Auto-TLS (self-signed CA, server cert, auto-renewal)
+- [ ] P2-5: Agent security policies (command allowlist, path restrictions)
 
 ### Phase 3: Ecosystem
+- [ ] Web dashboard (read-only status, grpc-gateway)
 - [ ] Plugin system for custom node capabilities
-- [ ] Web dashboard (read-only status, for humans)
 - [ ] Pre-built skills library
+- [ ] Agent auto-update
+
+## Documentation
+
+- [Quick Start Guide](docs/quickstart.md) — Get running in 5 minutes
+- [Configuration Reference](docs/configuration.md) — All config options
+- [Architecture Overview](docs/architecture.md) — How components fit together
+- [CLI Reference](docs/cli.md) — Full command reference
+- [Protocol Design](docs/protocol.md) — gRPC/protobuf details
+- [Server Design](docs/server.md) — Server internals
+- [Agent Design](docs/agent.md) — Agent internals
 
 ## Tech Stack
 
 - **Language**: Go
 - **Communication**: gRPC over HTTP/2 (full chain)
-- **Auth**: JWT tokens (CLI token bound to user + node list)
+- **Auth**: JWT (HMAC-SHA256) with JTI + revocation
+- **Persistence**: SQLite (WAL mode, single shared DB)
+- **TLS**: Auto-TLS (ECDSA P-256) or explicit certs
 - **Build**: Single binary per component, cross-platform
 
 ## License
