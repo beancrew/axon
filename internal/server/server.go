@@ -122,6 +122,16 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
 	}
 
+	// Initialize join token store.
+	joinTokenStore, err := auth.NewJoinTokenStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init join token store: %w", err)
+	}
+
+	// effectiveTLSDir is set when auto-TLS is active so the management service
+	// can serve the CA cert to joining agents.
+	var effectiveTLSDir string
+
 	// Auto-TLS: generate a self-signed CA + server cert when enabled and no
 	// explicit cert/key paths are configured.
 	if s.cfg.TLSAuto && s.cfg.TLSCertPath == "" {
@@ -133,6 +143,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 			}
 			tlsDir = filepath.Join(home, ".axon-server", "tls")
 		}
+		effectiveTLSDir = tlsDir
 		// Use the listen address host as the server cert CN/SAN when it is a
 		// specific hostname rather than a wildcard bind address.
 		hostname := "localhost"
@@ -177,7 +188,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
+	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker, joinTokenStore, effectiveTLSDir, s.cfg.HeartbeatInterval)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
@@ -267,7 +278,8 @@ func skipLoginUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.U
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		if info.FullMethod == managementpb.ManagementService_Login_FullMethodName {
+		if info.FullMethod == managementpb.ManagementService_Login_FullMethodName ||
+			info.FullMethod == managementpb.ManagementService_JoinAgent_FullMethodName {
 			return handler(ctx, req)
 		}
 		return inner(ctx, req, info, handler)

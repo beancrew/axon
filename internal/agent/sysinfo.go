@@ -13,6 +13,12 @@ import (
 // version is set at build time via -ldflags.
 var version = "dev"
 
+// CollectNodeInfo gathers hardware and OS information for the current host.
+// It is exported for use by the axon-agent join command.
+func CollectNodeInfo() *controlpb.NodeInfo {
+	return collectNodeInfo()
+}
+
 // collectNodeInfo gathers hardware and OS information for the current host.
 func collectNodeInfo() *controlpb.NodeInfo {
 	hostname, _ := os.Hostname()

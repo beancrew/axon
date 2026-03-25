@@ -151,8 +151,6 @@ func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 
 	switch {
-	case a.cfg.TLSInsecure:
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	case a.cfg.CACert != "":
 		creds, err := credentials.NewClientTLSFromFile(a.cfg.CACert, "")
 		if err != nil {
@@ -160,7 +158,7 @@ func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 		}
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	default:
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")))
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	if a.dialOverride != nil {

@@ -68,6 +68,12 @@ func (s *Server) ServeListenerReady(ctx context.Context, lis net.Listener, ready
 		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
 	}
 
+	// Initialize join token store for tests.
+	joinTokenStore, err := auth.NewJoinTokenStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init join token store: %w", err)
+	}
+
 	opts, err := s.buildServerOptions(tokenChecker)
 	if err != nil {
 		return err
@@ -88,7 +94,7 @@ func (s *Server) ServeListenerReady(ctx context.Context, lis net.Listener, ready
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
+	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker, joinTokenStore, "", s.cfg.HeartbeatInterval)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)

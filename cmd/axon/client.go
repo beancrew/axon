@@ -42,8 +42,6 @@ func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 
 	var transportOpt grpc.DialOption
 	switch {
-	case cfg.TLSInsecure:
-		transportOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
 	case cfg.CACert != "":
 		creds, err := credentials.NewClientTLSFromFile(cfg.CACert, "")
 		if err != nil {
@@ -51,7 +49,7 @@ func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 		}
 		transportOpt = grpc.WithTransportCredentials(creds)
 	default:
-		transportOpt = grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, ""))
+		transportOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 
 	opts := []grpc.DialOption{transportOpt}
