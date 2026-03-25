@@ -1,13 +1,13 @@
 # 快速开始
 
-5 分钟内跑通 Axon：启动 Server、连接 Agent、执行第一条远程命令。
+5 分钟内跑起来：一个 Server、一个 Agent、执行第一条远程命令。
 
 > [English Version](../quickstart.md)
 
 ## 前置条件
 
-- Go 1.25+ 已安装
-- 两台机器（或同一台机器上的两个终端用于测试）
+- Go 1.25+ 已安装（或下载预编译二进制 — 见[安装脚本](#安装脚本)）
+- 两台机器（或同一台机器两个终端测试）
 
 ## 1. 编译
 
@@ -21,99 +21,129 @@ make build
 
 | 二进制 | 用途 |
 |--------|------|
-| `axon` | CLI，人和 AI agent 的操作接口 |
-| `axon-server` | 中心控制面 |
-| `axon-agent` | 目标机器上的守护进程 |
+| `axon` | CLI，给人和 AI agent 用 |
+| `axon-server` | 中央控制面 |
+| `axon-agent` | 每台目标机器上的守护进程 |
 
-## 2. 启动 Server
+## 2. 初始化 Server
 
-创建最小配置文件：
-
-```yaml
-# server.yaml
-listen: ":9090"
-
-auth:
-  jwt_signing_key: "your-secret-key-change-me"
-
-users:
-  - username: admin
-    password_hash: "$2a$10$..."   # 密码的 bcrypt 哈希
-    node_ids: ["*"]               # 可访问所有节点
-```
-
-生成密码的 bcrypt 哈希：
+一条命令搞定 — 生成配置、JWT 密钥、管理员用户和 join token：
 
 ```bash
-# 使用 htpasswd（Apache 工具）
-htpasswd -nbBC 10 "" your-password | cut -d: -f2
-
-# 或使用 Python
-python3 -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt()).decode())"
+./bin/axon-server init --admin admin --password your-secret-password
 ```
 
-启动 Server：
+输出：
+
+```
+Server initialized
+
+   Config:     ~/.axon-server/config.yaml
+   Database:   ~/.axon-server/axon.db
+   Listen:     :9090
+   Admin user: admin
+
+Start the server:
+   axon-server start --config ~/.axon-server/config.yaml
+
+Join a node:
+   axon-agent join <SERVER_IP>:9090 axon-join-ab12cd34...
+
+Use CLI:
+   axon config set server <SERVER_IP>:9090
+   axon auth login
+```
+
+**保存 join token** — 后面注册 Agent 要用。
+
+### `init` 选项
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--listen` | `:9090` | gRPC 监听地址 |
+| `--admin` | `admin` | 管理员用户名 |
+| `--password` | *(交互输入)* | 管理员密码 |
+| `--data-dir` | `~/.axon-server` | 数据目录（配置、数据库、证书） |
+| `--tls` | `false` | 启用自动 TLS（自签 CA + 服务端证书） |
+| `--force` | `false` | 覆盖已有配置 |
+
+## 3. 启动 Server
 
 ```bash
-./bin/axon-server --config server.yaml
+./bin/axon-server start --config ~/.axon-server/config.yaml
 ```
 
-你会看到：
-
 ```
-server: auto-TLS: generated CA cert ~/.axon-server/tls/ca.crt (SHA-256: AA:BB:CC:...)
-server: gRPC listening on :9090 (TLS)
+server: gRPC listening on :9090
 ```
 
-**Auto-TLS** 会自动生成自签 CA 和服务端证书，无需手动配置证书。
+> **注意：** TLS 默认关闭 — 使用明文 gRPC，适用于内网/私有网络。通过 init 时加 `--tls` 或在配置中设 `tls.auto: true` 启用。见 [TLS 选项](#tls-选项)。
 
-## 3. 连接 Agent
+## 4. 加入 Agent
 
-在目标机器上（或另一个终端）启动 Agent：
+在目标机器上，一条命令注册节点：
 
 ```bash
-./bin/axon-agent start \
-  --server localhost:9090 \
-  --token your-agent-token \
-  --name my-node \
-  --tls-insecure    # 测试环境使用自签证书
+./bin/axon-agent join <SERVER_IP>:9090 axon-join-ab12cd34... --tls-insecure
 ```
 
-或使用 CA 证书做正式 TLS 验证：
+> 连接无 TLS 的 Server 时需加 `--tls-insecure`。如果启用了 TLS，去掉此参数或改用 `--ca-cert`。
 
-```bash
-./bin/axon-agent start \
-  --server localhost:9090 \
-  --token your-agent-token \
-  --name my-node \
-  --ca-cert ~/.axon-server/tls/ca.crt
+输出：
+
+```
+Node enrolled successfully
+
+   Node ID:    a1b2c3d4-...
+   Node Name:  my-node
+   Server:     10.0.1.1:9090
+   Config:     ~/.axon-agent/config.yaml
+
+Starting agent... (Ctrl+C to stop)
 ```
 
-Agent 连接 Server 后自动注册。
+一步完成：
+- 验证 join token
+- 获取 Agent JWT
+- 保存配置到 `~/.axon-agent/config.yaml`
+- 启动 Agent 控制面循环
 
-## 4. CLI 登录
+### `join` 选项
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--name` | 主机名 | 节点显示名称 |
+| `--labels` | — | 标签 `key=value`（可重复） |
+| `--ca-cert` | — | CA 证书路径（TLS 验证） |
+| `--tls-insecure` | `false` | 跳过 TLS（连接无 TLS 的 Server） |
+
+### 重新连接
+
+首次 join 后，重连只需：
 
 ```bash
-# 配置 Server 地址
-./bin/axon config set server localhost:9090
+./bin/axon-agent start
+```
+
+Agent 自动读取保存的配置（`~/.axon-agent/config.yaml`）。
+
+## 5. CLI 登录
+
+```bash
+# 设置 Server 地址
+./bin/axon config set server <SERVER_IP>:9090
 
 # 登录（提示输入用户名/密码）
-./bin/axon auth login --tls-insecure
+./bin/axon auth login
 ```
 
-或使用 CA 证书：
+## 6. 执行命令
 
 ```bash
-./bin/axon auth login --ca-cert ~/.axon-server/tls/ca.crt
-```
-
-## 5. 执行操作
-
-```bash
-# 列出已连接的节点
+# 列出已连接节点
 axon node list
 
-# 在远程节点上执行命令
+# 在远程节点执行命令
 axon exec my-node "hostname"
 axon exec my-node "ls -la /tmp"
 
@@ -128,10 +158,23 @@ axon forward my-node 8080:80
 # 现在 localhost:8080 → my-node:80
 ```
 
-## 6. 用户管理（可选）
+## 7. 管理 Join Token
 
 ```bash
-# 创建新用户
+# 创建新 join token（可选限制）
+axon token create-join --max-uses 10 --expires 24h
+
+# 列出所有 join token
+axon token list-join
+
+# 吊销 token
+axon token revoke-join <token-id>
+```
+
+## 8. 管理用户（可选）
+
+```bash
+# 创建用户
 axon user create deploy-bot --node-ids web-1,web-2
 
 # 列出用户
@@ -144,26 +187,37 @@ axon user update deploy-bot --node-ids web-1,web-2,db-1
 axon user delete deploy-bot
 ```
 
-## 7. Token 管理（可选）
-
-```bash
-# 列出已签发的 Token
-axon auth list-tokens
-
-# 吊销 Token
-axon auth revoke <token-id>
-```
-
 ## TLS 选项
 
-| 场景 | Server 配置 | 客户端/Agent 参数 |
-|------|-----------|-----------------|
-| Auto-TLS（默认） | 不配 `tls.cert`/`tls.key` → 自动生成 | `--ca-cert ~/.axon-server/tls/ca.crt` |
-| 自带证书 | 配置 `tls.cert` + `tls.key` | 系统 CA 或 `--ca-cert` |
-| 禁用 TLS（仅开发） | `tls.auto: false`（不配证书） | `--tls-insecure` |
+TLS **默认关闭** — 明文 gRPC 适用于内网/私有网络。
+
+| 场景 | Server 配置 | Client/Agent 参数 |
+|------|------------|-------------------|
+| 无 TLS（默认） | `axon-server init`（不加 `--tls`） | `--tls-insecure`（用于 `axon-agent join`） |
+| 自动 TLS | `axon-server init --tls` | `--ca-cert ~/.axon-server/tls/ca.crt` |
+| 自备证书 | 配置 `tls.cert` + `tls.key` | 系统 CA 库 或 `--ca-cert` |
+
+启用自动 TLS 时，Server 生成自签 CA 和服务端证书（ECDSA P-256）。Agent `join` 时 CA 证书会自动下发。
+
+## 安装脚本
+
+从 GitHub Releases 下载预编译二进制：
+
+```bash
+# 安装 Server
+curl -fsSL https://axon.dev/install | sh -s -- server
+
+# 安装 Agent
+curl -fsSL https://axon.dev/install | sh -s -- agent
+
+# 安装 CLI
+curl -fsSL https://axon.dev/install | sh -s -- cli
+```
+
+脚本自动检测 OS/架构，安装到 `/usr/local/bin`（无 root 权限时安装到 `~/.axon/bin`）。
 
 ## 下一步
 
-- [配置参考](configuration.md) — Server、Agent、CLI 的全部配置选项
-- [架构概览](architecture.md) — 组件如何协作
+- [配置参考](configuration.md) — 所有配置选项
+- [架构总览](architecture.md) — 组件如何配合
 - [CLI 参考](cli.md) — 完整命令参考
