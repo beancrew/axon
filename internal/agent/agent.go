@@ -150,9 +150,16 @@ func (a *Agent) runOnce(ctx context.Context) error {
 func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 
-	if a.cfg.TLSInsecure {
+	switch {
+	case a.cfg.TLSInsecure:
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	} else {
+	case a.cfg.CACert != "":
+		creds, err := credentials.NewClientTLSFromFile(a.cfg.CACert, "")
+		if err != nil {
+			return nil, fmt.Errorf("load CA cert %q: %w", a.cfg.CACert, err)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	default:
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")))
 	}
 

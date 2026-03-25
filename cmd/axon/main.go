@@ -27,12 +27,15 @@ func main() {
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "axon",
-		Short: "Axon CLI — remote operations on agent nodes",
-		Long:  "Axon connects AI agents to real machines. Use this CLI to execute commands, read/write files, and forward ports on remote nodes.",
+		Use:           "axon",
+		Short:         "Axon CLI — remote operations on agent nodes",
+		Long:          "Axon connects AI agents to real machines. Use this CLI to execute commands, read/write files, and forward ports on remote nodes.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+
+	root.PersistentFlags().StringVar(&globalCACert, "ca-cert", "", "path to CA certificate for TLS verification")
+	root.PersistentFlags().BoolVar(&globalTLSInsecure, "tls-insecure", false, "skip TLS certificate verification (insecure)")
 
 	root.AddCommand(
 		versionCmd(),

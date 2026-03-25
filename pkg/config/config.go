@@ -13,12 +13,14 @@ import (
 
 // ServerConfig holds configuration for the Axon server.
 type ServerConfig struct {
-	ListenAddr               string `yaml:"listen_addr"`
-	TLSCertPath              string `yaml:"tls_cert_path"`
-	TLSKeyPath               string `yaml:"tls_key_path"`
-	JWTSecret                string `yaml:"jwt_secret"`
-	AuditDBPath              string `yaml:"audit_db_path"`
-	HeartbeatTimeoutSeconds  int    `yaml:"heartbeat_timeout_seconds"`
+	ListenAddr              string `yaml:"listen_addr"`
+	TLSCertPath             string `yaml:"tls_cert_path"`
+	TLSKeyPath              string `yaml:"tls_key_path"`
+	TLSAuto                 bool   `yaml:"tls_auto"`
+	TLSDir                  string `yaml:"tls_dir"`
+	JWTSecret               string `yaml:"jwt_secret"`
+	AuditDBPath             string `yaml:"audit_db_path"`
+	HeartbeatTimeoutSeconds int    `yaml:"heartbeat_timeout_seconds"`
 }
 
 // AgentConfig holds configuration for the Axon agent.
@@ -28,14 +30,16 @@ type AgentConfig struct {
 	NodeID      string            `yaml:"node_id,omitempty"` // assigned by server after first registration
 	NodeName    string            `yaml:"node_name"`
 	Labels      map[string]string `yaml:"labels"`
+	CACert      string            `yaml:"ca_cert"`
 	TLSInsecure bool              `yaml:"tls_insecure"`
 }
 
 // CLIConfig holds configuration for the Axon CLI.
 type CLIConfig struct {
-	ServerAddr  string `yaml:"server_addr"`
-	Token       string `yaml:"token"`
+	ServerAddr   string `yaml:"server_addr"`
+	Token        string `yaml:"token"`
 	OutputFormat string `yaml:"output_format"`
+	CACert       string `yaml:"ca_cert"`
 	TLSInsecure  bool   `yaml:"tls_insecure"`
 }
 
@@ -170,6 +174,9 @@ func applyServerEnv(cfg *ServerConfig) {
 	if v := os.Getenv("AXON_TLS_KEY"); v != "" {
 		cfg.TLSKeyPath = v
 	}
+	if v := os.Getenv("AXON_TLS_DIR"); v != "" {
+		cfg.TLSDir = v
+	}
 	if v := os.Getenv("AXON_JWT_SECRET"); v != "" {
 		cfg.JWTSecret = v
 	}
@@ -185,6 +192,9 @@ func applyAgentEnv(cfg *AgentConfig) {
 	if v := os.Getenv("AXON_TOKEN"); v != "" {
 		cfg.Token = v
 	}
+	if v := os.Getenv("AXON_CA_CERT"); v != "" {
+		cfg.CACert = v
+	}
 }
 
 func applyCLIEnv(cfg *CLIConfig) {
@@ -193,5 +203,8 @@ func applyCLIEnv(cfg *CLIConfig) {
 	}
 	if v := os.Getenv("AXON_TOKEN"); v != "" {
 		cfg.Token = v
+	}
+	if v := os.Getenv("AXON_CA_CERT"); v != "" {
+		cfg.CACert = v
 	}
 }
