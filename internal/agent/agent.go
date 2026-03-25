@@ -174,6 +174,7 @@ func (a *Agent) register(stream controlpb.ControlService_ConnectClient) (time.Du
 				Token:    a.cfg.Token,
 				NodeName: a.nodeName,
 				Info:     info,
+				NodeId:   a.cfg.NodeID,
 			},
 		},
 	}); err != nil {
