@@ -1,5 +1,7 @@
 # Axon Architecture Overview
 
+> [中文版 / Chinese](zh/architecture.md)
+
 ## Components
 
 Axon consists of three components, each built as a single static binary.
@@ -34,8 +36,6 @@ Multiple gRPC streams share a single HTTP/2 TCP connection — no connection exp
 3. Agent reverse connection requires long-lived connection — gRPC bidi stream is native
 4. HTTP would need SSE + WebSocket + chunked transfer — three patches instead of one protocol
 5. Unified tech stack: one proto definition, one TLS config, one codegen pipeline
-
-Future HTTP/REST access (web dashboard, third-party integrations) will be served by a grpc-gateway layer in Phase 3.
 
 ## Connection Model
 
@@ -83,17 +83,64 @@ JWT-based. Server holds the signing key.
 ┌─── CLI Token (JWT) ──┐     ┌─── Agent Token ───────────┐
 │ user_id              │     │ node_id                    │
 │ node_ids: [...]      │     │ server_url                 │
-│ exp                  │     │ (used once at first start) │
-│ iat                  │     └────────────────────────────┘
+│ jti (unique token ID)│     │ (used once at first start) │
+│ exp                  │     └────────────────────────────┘
+│ iat                  │
 └──────────────────────┘
 ```
 
 | Token Type | Scope | Lifetime |
 |------------|-------|----------|
-| CLI Token | Bound to user + allowed node list | Configurable expiry |
-| Agent Token | Bound to node identity | Used at first registration, then session-based |
+| CLI Token | Bound to user + allowed node list | Configurable expiry (default 24h) |
+| Agent Token | Bound to node identity | Used at registration |
 
-CLI Token binds to specific nodes — a token can only operate on its allowed node list.
+### Token Management
+
+- Each issued CLI token gets a unique **JTI** (JWT ID)
+- Tokens are persisted in SQLite — can be listed and revoked
+- Revoked tokens are checked in-memory (O(1) lookup) via gRPC interceptor
+- CLI commands: `axon auth list-tokens`, `axon auth revoke <id>`
+
+### User Management
+
+- Users are stored in SQLite with bcrypt password hashes
+- Bootstrap users from config file are seeded on first start (INSERT OR IGNORE)
+- Full CRUD via gRPC RPCs and CLI: `axon user create/list/update/delete`
+- Users can be disabled without deletion
+
+## Persistence
+
+All persistent state lives in a **single shared SQLite database** (WAL mode):
+
+| Table | Contents |
+|-------|----------|
+| `nodes` | Node registry (ID, name, status, metadata, token hash) |
+| `tokens` | Issued JWT tokens (JTI, kind, user, nodes, timestamps, revoked) |
+| `users` | CLI users (username, password hash, node IDs, timestamps, disabled) |
+| `audit_log` | Operation audit trail (separate SQLite file) |
+
+### Node Identity
+
+Nodes get a stable `node_id` (UUID) on first registration, persisted in the agent's local config. On reconnect, the server identifies returning nodes by `node_id`. Heartbeats are batched (30s flush interval) to reduce write load.
+
+## TLS
+
+### Auto-TLS (Default)
+
+When no explicit TLS certificates are configured, the server auto-generates:
+- **CA**: ECDSA P-256, 10-year validity, stored at `~/.axon-server/tls/ca.crt`
+- **Server cert**: ECDSA P-256, 1-year validity, auto-renewed when expiring within 30 days
+- SANs: always include `localhost` + `127.0.0.1` + configured hostname
+
+The CA certificate must be distributed to agents and CLI clients for TLS verification.
+
+### TLS Modes
+
+| Mode | Server Config | Client/Agent |
+|------|--------------|--------------|
+| Auto-TLS | Default (no cert/key configured) | `--ca-cert ca.crt` |
+| Explicit cert | `tls.cert` + `tls.key` | System CA or `--ca-cert` |
+| No TLS (dev) | `tls.auto: false` | `--tls-insecure` |
 
 ## Node States
 
@@ -110,7 +157,7 @@ Every operation through the Server is logged:
 
 ```json
 {
-  "timestamp": "2026-03-20T11:22:00Z",
+  "timestamp": "2026-03-25T11:22:00Z",
   "user_id": "gary",
   "node_id": "web-1",
   "action": "exec",
@@ -120,7 +167,7 @@ Every operation through the Server is logged:
 }
 ```
 
-Storage: SQLite (Phase 1). Extensible to external stores later.
+Storage: SQLite (async write, non-blocking, buffered channel → background writer).
 
 ## Tech Stack
 
@@ -128,8 +175,9 @@ Storage: SQLite (Phase 1). Extensible to external stores later.
 |------|--------|
 | Language | Go |
 | Communication | gRPC (HTTP/2), full link |
-| Auth | JWT |
+| Auth | JWT (HMAC-SHA256) with JTI + revocation |
 | Serialization | Protocol Buffers |
+| Persistence | SQLite (WAL mode, single shared DB) |
+| TLS | Auto-TLS (ECDSA P-256) or explicit certs |
 | Build | Single binary × 3, cross-platform |
-| Audit storage | SQLite (Phase 1) |
 | Config format | YAML |

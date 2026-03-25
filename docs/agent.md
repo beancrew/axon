@@ -1,5 +1,7 @@
 # Axon Agent Design
 
+> [中文版 / Chinese](zh/agent.md)
+
 ## Overview
 
 `axon-agent` is a lightweight daemon installed on each target machine. It reverse-connects to axon-server via gRPC, registers itself, maintains a heartbeat, and responds to tasks dispatched by the server.
@@ -16,33 +18,29 @@ axon-agent start --server <addr> --token <token> [--name <name>]
     │
     ├── First run:
     │   1. Save config to ~/.axon-agent/config.yaml
-    │   2. Connect to server (gRPC TLS)
-    │   3. Send RegisterRequest (token + node info)
+    │   2. Connect to server (gRPC + TLS)
+    │   3. Send RegisterRequest (token + node_name + NodeInfo)
     │   4. Receive RegisterResponse (node_id + heartbeat interval)
-    │   5. Begin heartbeat loop
+    │   5. Save node_id to config (stable identity)
+    │   6. Begin heartbeat loop
     │
     ├── Subsequent runs:
     │   1. Read config from ~/.axon-agent/config.yaml
     │   2. Connect to server
-    │   3. Re-register (server recognizes returning node by node_id)
+    │   3. Re-register with existing node_id (server recognizes returning node)
     │   4. Begin heartbeat loop
     │
     ▼
 Running (waiting for tasks)
     ├── Heartbeat every N seconds (server-configured)
-    ├── Node info reporting (periodic, or on change)
+    ├── Node info reporting (periodic)
     ├── Task execution (on demand)
     │
     ├── Connection lost → exponential backoff reconnect
     │   Initial: 1s, max: 60s, jitter: ±20%
     │
     ▼
-Stop
-    ├── axon-agent stop → graceful shutdown
-    │   - Complete in-flight tasks (with timeout)
-    │   - Close gRPC streams
-    │   - Exit
-    └── kill -9 → server detects via heartbeat timeout → mark offline
+Stop → graceful shutdown → complete in-flight tasks → exit
 ```
 
 ## Config
@@ -50,102 +48,63 @@ Stop
 Stored at `~/.axon-agent/config.yaml`:
 
 ```yaml
-server: "axon.example.com:443"
+server: "axon.example.com:9090"
 token: "agent-token-xxx"
-node_id: "a1b2c3d4"           # Assigned by server after first registration
-node_name: "web-1"            # User-specified or hostname
+node_id: "a1b2c3d4"           # assigned by server after first registration
+node_name: "web-1"            # user-specified or hostname
 labels:
   env: production
   role: web
+ca_cert: "/path/to/ca.crt"    # CA certificate for TLS verification
+tls_insecure: false            # skip TLS verification (dev only)
 ```
 
-- `token`: used for initial registration, validated by server
-- `node_id`: persisted after first registration, used for reconnection identity
-- `node_name`: if not specified, defaults to hostname
-- `labels`: optional key-value pairs for node grouping
+See [Configuration Reference](configuration.md) for all fields and environment variables.
+
+## TLS
+
+The agent uses a 3-way TLS selection:
+
+| Priority | Condition | Behavior |
+|----------|-----------|----------|
+| 1 | `tls_insecure: true` | No TLS verification (plaintext gRPC) |
+| 2 | `ca_cert` set | Verify server cert against specified CA file |
+| 3 | Neither | Verify server cert against system CA pool |
+
+**For auto-TLS setups:** Copy the server's `~/.axon-server/tls/ca.crt` to the agent machine and set `ca_cert` in config or pass `--ca-cert` flag.
 
 ## Commands
 
 ### `axon-agent start`
 
-Start the agent daemon.
-
 ```
-$ axon-agent start --server axon.example.com:443 --token <token>
-[INFO] connecting to axon.example.com:443...
+$ axon-agent start --server axon.example.com:9090 --token <token> --ca-cert /path/to/ca.crt
+[INFO] connecting to axon.example.com:9090...
 [INFO] registered as node "web-1" (id: a1b2c3d4)
 [INFO] heartbeat interval: 10s
 [INFO] ready, waiting for tasks
-
-# Subsequent starts (config already saved):
-$ axon-agent start
-[INFO] connecting to axon.example.com:443...
-[INFO] reconnected as node "web-1" (id: a1b2c3d4)
-[INFO] ready, waiting for tasks
 ```
 
-- **Server**: ✅ required
 - **Flags**:
-  - `--server <address>` — server address (first run, saved to config)
-  - `--token <token>` — agent token (first run, saved to config)
+  - `--server <address>` — server address (saved to config on first run)
+  - `--token <token>` — agent token (saved to config)
   - `--name <name>` — node name (optional, defaults to hostname)
   - `--labels key=value` — labels (repeatable)
-  - `--foreground` — run in foreground (default: daemonize)
+  - `--ca-cert <path>` — CA certificate for TLS verification
+  - `--tls-insecure` — skip TLS verification (dev only)
+  - `--foreground` — run in foreground
 
 ### `axon-agent stop`
 
-Stop the agent daemon.
-
-```
-$ axon-agent stop
-[INFO] shutting down...
-[INFO] completing 2 in-flight tasks...
-[INFO] stopped
-```
-
-- **Server**: ❌ local only
-- **Behavior**: sends SIGTERM to daemon process, waits for graceful shutdown
+Stop the agent daemon gracefully.
 
 ### `axon-agent status`
 
-Show agent status.
-
-```
-$ axon-agent status
-Status:      running
-Server:      axon.example.com:443
-Connection:  connected
-Node ID:     a1b2c3d4
-Node Name:   web-1
-Uptime:      3d 12h 5m
-Last Heartbeat: 2s ago
-Active Tasks: 0
-```
-
-- **Server**: local process check + connection health ping
-- **Flags**:
-  - `--json` — JSON output
-
-### `axon-agent config set/get`
-
-Manage local config.
-
-```
-$ axon-agent config set labels.env staging
-$ axon-agent config get server
-axon.example.com:443
-```
-
-- **Server**: ❌ local only
+Show agent status (running, connection, node info).
 
 ### `axon-agent version`
 
-```
-$ axon-agent version
-axon-agent 0.1.0 (go1.22, linux/amd64)
-```
-
-- **Server**: ❌ local only
+Print version info.
 
 ## Task Execution
 
@@ -155,92 +114,69 @@ Agent receives tasks via the control plane stream and opens data plane streams t
 
 ```
 1. Server sends TaskSignal{task_id, TASK_EXEC} via control stream
-2. Agent opens data stream, receives ExecRequest{command, env, workdir, timeout}
-3. Agent spawns local process:
-   - os/exec.Command(shell, "-c", command)
-   - Pipe stdout/stderr
-   - Set environment variables
-   - Set working directory
-4. Stream stdout/stderr chunks back as ExecOutput messages
+2. Agent opens HandleTask stream, receives ExecRequest
+3. Agent spawns local process (os/exec.Command)
+4. Stream stdout/stderr chunks as ExecOutput messages
 5. Process exits → send ExecExit{exit_code} → close stream
 ```
 
-**Process management:**
 - Each exec runs as a child process of the agent
-- Agent inherits its user's permissions (no sandboxing in Phase 1)
-- Timeout: agent kills the process with SIGTERM, then SIGKILL after 5s
+- Agent inherits its user's permissions
+- Timeout: SIGTERM → wait 5s → SIGKILL
 - Cancellation: gRPC context cancel → SIGTERM → SIGKILL
 
 ### Read
 
 ```
-1. Server sends TaskSignal{task_id, TASK_READ}
-2. Agent opens data stream, receives ReadRequest{path}
-3. Agent stat() the file → send ReadMeta{size, mode, mtime}
-4. Open file, read in chunks (default 32KB) → send ReadOutput{data} per chunk
+1. TaskSignal → agent opens HandleTask stream
+2. Receives ReadRequest{path}
+3. stat() → send ReadMeta{size, mode, mtime}
+4. Read in chunks (32KB) → send ReadOutput{data}
 5. EOF → close stream
 ```
-
-**Error cases:**
-- File not found → gRPC NOT_FOUND
-- Permission denied → gRPC PERMISSION_DENIED
-- Is a directory → gRPC INVALID_ARGUMENT
 
 ### Write
 
 ```
-1. Server sends TaskSignal{task_id, TASK_WRITE}
-2. Agent opens data stream, receives WriteHeader{path, mode}
-3. Create/truncate file with specified mode
-4. Receive WriteInput{data} chunks → write to file
-5. Client closes stream → agent responds WriteResponse{success, bytes_written}
+1. TaskSignal → agent opens HandleTask stream
+2. Receives WriteHeader{path, mode}
+3. Create/truncate file → receive WriteInput{data} chunks
+4. Complete → send WriteResponse{success, bytes_written}
 ```
 
-**Behavior:**
-- Creates parent directories if they don't exist
-- Atomic write: write to temp file, then rename (prevents partial writes)
-- Default mode: 0644
+- Creates parent directories if needed
+- Atomic write: temp file + rename
 
 ### Forward
 
 ```
-1. Server sends TaskSignal{task_id, TASK_FORWARD}
-2. Agent opens data stream, receives TunnelOpen{remote_port}
-3. Agent dials localhost:<remote_port> via TCP
-4. Bidirectional relay:
-   - TunnelData{payload} from server → write to TCP connection
-   - TCP data read → send TunnelData{payload} to server
-5. Either side closes → send TunnelData{close} → clean up
+1. TaskSignal → agent opens HandleTask stream
+2. Receives TunnelOpen{remote_port}
+3. Dial localhost:<remote_port> via TCP
+4. Bidirectional relay: TunnelData ↔ TCP socket
+5. Either side closes → TunnelData{close} → cleanup
 ```
-
-**Error cases:**
-- Cannot connect to target port → gRPC UNAVAILABLE with error detail
-- Connection reset → TunnelData{close}
 
 ## Heartbeat & Node Info
 
 ### Heartbeat
 
-- Agent sends `Heartbeat{timestamp}` every N seconds
-- N is configured by server in `RegisterResponse.heartbeat_interval_seconds`
-- Default: 10 seconds
-- Server marks node offline if no heartbeat received within 3× interval (30s default)
+- Interval configured by server in `RegisterResponse.heartbeat_interval_seconds`
+- Default: 10s
+- Server marks offline if no heartbeat within timeout (default 30s)
 
-### Node Info Reporting
+### Node Info
 
-Agent reports `NodeInfo` (including detailed `OSInfo`: kernel name, kernel version, distribution, distribution version, pretty name) on:
+Agent reports `NodeInfo` (hostname, arch, IP, uptime, agent version, OSInfo) on:
 1. Registration (initial report)
-2. Periodic update (every 5 minutes, or configurable)
-3. On significant change (IP change, OS upgrade, etc.)
+2. Periodic update
 
-OS information is collected using standard system calls:
-- **Linux**: `/etc/os-release` for distribution info, `uname` for kernel
-- **macOS**: `sw_vers` for version, `uname` for kernel
-- **Windows**: `RtlGetVersion` for OS version info
+OS info is collected per-platform:
+- **Linux**: `/etc/os-release` + `uname`
+- **macOS**: `sw_vers` + `uname`
+- **Windows**: `RtlGetVersion`
 
 ## Reconnection
-
-On connection loss:
 
 ```
 Attempt 1: wait 1s    → reconnect
@@ -251,30 +187,13 @@ Attempt N: wait min(2^N, 60)s ± 20% jitter → reconnect
 ```
 
 On successful reconnect:
-- Re-register with existing `node_id` (server recognizes returning node)
+- Re-register with existing `node_id`
 - Resume heartbeat
 - In-flight tasks at disconnect time are considered failed
 
-## Security
-
-### Phase 1 (current)
-
-- Agent runs as whatever user starts it
-- No command filtering, no path restrictions
-- All exec/read/write permissions = agent process user permissions
-- Trust boundary: if you have a valid CLI token bound to a node, you can do anything the agent user can do
-
-### Phase 2 (future)
-
-- Command allowlist/denylist
-- Path restrictions (allowed directories)
-- Resource limits (CPU, memory, time per exec)
-
 ## System Service
 
-Agent should run as a system service for production:
-
-```bash
+```ini
 # systemd example
 [Unit]
 Description=Axon Agent
@@ -285,17 +204,8 @@ ExecStart=/usr/local/bin/axon-agent start --foreground
 Restart=always
 RestartSec=5
 User=axon
+Environment=AXON_CA_CERT=/etc/axon-agent/ca.crt
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-## Command Summary
-
-| Command | Server | Description |
-|---------|:------:|-------------|
-| `start` | ✅ | Start daemon, connect & register |
-| `stop` | ❌ | Stop daemon (graceful) |
-| `status` | ⚠️ | Local + connection health |
-| `config set/get` | ❌ | Local config |
-| `version` | ❌ | Local version |

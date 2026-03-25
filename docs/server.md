@@ -1,8 +1,10 @@
 # Axon Server Design
 
+> [中文版 / Chinese](zh/server.md)
+
 ## Overview
 
-`axon-server` is the central control plane. Single binary, self-hosted. Manages node registration, authentication, request routing, and audit logging.
+`axon-server` is the central control plane. Single binary, self-hosted. Manages node registration, authentication, request routing, persistence, TLS, and audit logging.
 
 **All traffic flows through the server. CLI and Agent never communicate directly.**
 
@@ -22,12 +24,13 @@
 │  └────┬───────────────────────────┬───────┘  │
 │       │                           │          │
 │  ┌────▼─────┐             ┌──────▼───────┐  │
-│  │ Registry │             │ Auth (JWT)   │  │
-│  │          │             │              │  │
-│  │ node_id  │             │ sign/verify  │  │
-│  │ status   │             │ token scope  │  │
-│  │ streams  │             └──────────────┘  │
-│  └────┬─────┘                                │
+│  │ Registry │             │ Auth         │  │
+│  │ (SQLite) │             │ JWT + Users  │  │
+│  │          │             │ + Tokens     │  │
+│  │ node_id  │             │              │  │
+│  │ status   │             │ sign/verify  │  │
+│  │ streams  │             │ revocation   │  │
+│  └────┬─────┘             └──────────────┘  │
 │       │                                      │
 │  ┌────▼─────┐                                │
 │  │ Audit    │                                │
@@ -40,52 +43,48 @@
 
 ### 1. gRPC API Layer
 
-Exposes three gRPC services (see [protocol.md](protocol.md)):
+Single gRPC server on one port. All three services registered on the same server.
 
 | Service | Source | Description |
 |---------|--------|-------------|
-| `ControlService` | Agent | Agent registration, heartbeat, task dispatch |
+| `ControlService` | Agent | Registration, heartbeat, task dispatch |
 | `OperationsService` | CLI | exec, read, write, forward |
-| `ManagementService` | CLI | node list/info/remove, auth login |
+| `ManagementService` | CLI | Node/user/token management, auth login |
 
-Single gRPC server on one port (default: 443). All three services registered on the same server.
+### 2. Node Registry (SQLite-backed)
 
-### 2. Node Registry
+Persistent registry of all known nodes.
 
-In-memory registry of all known nodes.
-
-```go
-type NodeEntry struct {
-    NodeID        string
-    NodeName      string
-    Status        string            // "online" | "offline"
-    Info          NodeInfo          // hostname, arch, IP, version, uptime, OS info
-    Labels        map[string]string
-    ControlStream grpc.BidiStream   // Reference to active control stream
-    ConnectedAt   time.Time
-    LastHeartbeat time.Time
-    RegisteredAt  time.Time
-}
+```sql
+CREATE TABLE nodes (
+    node_id      TEXT PRIMARY KEY,
+    node_name    TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'offline',
+    token_hash   TEXT NOT NULL,
+    info_json    TEXT,
+    labels_json  TEXT,
+    connected_at INTEGER,
+    last_heartbeat INTEGER,
+    registered_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX idx_nodes_name ON nodes(node_name);
 ```
 
 **Operations:**
 
 | Operation | Trigger | Description |
 |-----------|---------|-------------|
-| Register | Agent connects | Add/update node entry, set status = online |
-| Heartbeat update | Agent heartbeat | Update `LastHeartbeat` |
-| Mark offline | Heartbeat timeout | Set status = offline, clear ControlStream ref |
-| Remove | `axon node remove` | Delete entry entirely, disconnect agent |
+| Register | Agent connects | Upsert node entry, set status = online |
+| Heartbeat update | Agent heartbeat | Batched updates (30s flush interval) |
+| Mark offline | Heartbeat timeout | Set status = offline, clear stream ref |
+| Remove | `axon node remove` | Delete entry, disconnect agent |
 | List | `axon node list` | Return all entries |
-| Lookup | Any CLI operation | Find node by name or ID |
 
-**Persistence:**
-- Phase 1: in-memory only. Nodes re-register on server restart.
-- Phase 2: persist to SQLite for fast recovery.
+**Stable Node Identity:** Nodes get a UUID `node_id` on first registration, persisted in the agent's local config. On reconnect, server recognizes returning nodes by `node_id`.
 
-**Heartbeat timeout detection:**
-- Background goroutine checks every 5 seconds
-- If `time.Now() - LastHeartbeat > 3 × heartbeat_interval` → mark offline
+**Heartbeat Batching:** Heartbeat timestamps are batched in memory and flushed to SQLite every 30 seconds (plus graceful-shutdown flush) to reduce write pressure.
+
+**Startup Behavior:** On server start, all persisted nodes are loaded and marked `offline`. They return to `online` when agents reconnect.
 
 ### 3. Router
 
@@ -96,89 +95,86 @@ CLI request (exec web-1 "ls")
     │
     ▼
 Router:
-    1. Authenticate: verify JWT token from gRPC metadata
-    2. Authorize: check token.node_ids contains "web-1"
-    3. Lookup: find "web-1" in Registry
-    4. Check status: if offline → return UNAVAILABLE
+    1. Authenticate: verify JWT token (interceptor)
+    2. Authorize: check token.node_ids contains target
+    3. Lookup: find node in Registry
+    4. Check status: if offline → UNAVAILABLE
     5. Dispatch: send TaskSignal via control stream
     6. Bridge: proxy data between CLI stream and Agent data stream
 ```
 
-**Stream bridging for operations:**
-
-```
-CLI gRPC stream ←──→ Server (bridge) ←──→ Agent gRPC stream
-```
-
-Server acts as a transparent proxy:
-- exec: forward ExecOutput from Agent stream to CLI stream
-- read: forward ReadOutput from Agent stream to CLI stream
-- write: forward WriteInput from CLI stream to Agent stream
-- forward: bidirectional relay of TunnelData between CLI and Agent streams
-
 ### 4. Auth Module
 
-JWT-based authentication.
+JWT-based authentication with token lifecycle management.
 
 **Token types:**
 
-| Type | Issued to | Contains | Used for |
-|------|-----------|----------|----------|
-| CLI Token | Users/agents | `user_id`, `node_ids[]`, `exp`, `iat` | CLI → Server auth |
-| Agent Token | Nodes | `node_id`, `exp` | Agent registration (one-time) |
+| Type | Contains | Lifetime |
+|------|----------|----------|
+| CLI Token | `sub` (username), `node_ids`, `jti`, `exp`, `iat` | Default 24h |
+| Agent Token | `node_id` | Registration |
 
-**Server-side:**
+**gRPC Interceptor:**
 
-```go
-type AuthConfig struct {
-    JWTSigningKey string        // HMAC-SHA256 key
-    TokenExpiry   time.Duration // Default: 24h for CLI tokens
-}
-```
-
-**Token validation flow:**
-
-```
-1. Extract token from gRPC metadata ("authorization: Bearer <token>")
-2. Verify JWT signature
+All RPCs (except `Login` and `Connect`) pass through interceptors that:
+1. Extract bearer token from gRPC metadata
+2. Verify HMAC-SHA256 signature
 3. Check expiry
-4. For CLI tokens: extract node_ids, pass to Router for authorization
-5. For Agent tokens: extract node_id, pass to Registry for registration
+4. Check JTI against revoked set (O(1) in-memory lookup)
+5. Inject claims into context
+
+**Token Store (SQLite):**
+
+```sql
+CREATE TABLE tokens (
+    id         TEXT PRIMARY KEY,    -- JTI
+    kind       TEXT NOT NULL,       -- "cli" or "agent"
+    user_id    TEXT,
+    node_ids   TEXT,                -- JSON array
+    issued_at  INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    revoked    INTEGER NOT NULL DEFAULT 0
+);
 ```
 
-**Login flow (Phase 1):**
+On Login, the issued token is persisted. On startup, revoked JTIs are loaded into an in-memory set.
 
-```
-CLI sends LoginRequest{username, password}
-    │
-    ▼
-Server validates against local user store (config file or SQLite)
-    │
-    ▼
-Server signs JWT with user_id + allowed node_ids
-    │
-    ▼
-Returns LoginResponse{token, expires_at}
-```
+### 5. User Store (SQLite)
 
-**User store (Phase 1):**
+Persistent user management replacing the config-file-only approach.
 
-```yaml
-# axon-server config
-users:
-  - username: gary
-    password_hash: "$2a$10$..."   # bcrypt
-    node_ids: ["*"]               # Access to all nodes
-  - username: deploy-agent
-    password_hash: "$2a$10$..."
-    node_ids: ["web-1", "web-2"]  # Restricted access
+```sql
+CREATE TABLE users (
+    username      TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,     -- bcrypt
+    node_ids      TEXT NOT NULL,     -- JSON array
+    created_at    INTEGER NOT NULL,
+    updated_at    INTEGER NOT NULL,
+    disabled      INTEGER NOT NULL DEFAULT 0
+);
 ```
 
-### 5. Audit Logger
+**Bootstrap:** Users defined in the config YAML are seeded on startup via `INSERT OR IGNORE` — existing DB users are not overwritten. After bootstrap, users are managed via gRPC RPCs (`CreateUser`, `UpdateUser`, `DeleteUser`, `ListUsers`).
 
-Logs every operation that passes through the server.
+**Login flow:** Server looks up user in SQLite, checks `disabled` flag, verifies bcrypt password, signs JWT with JTI, persists token to store.
 
-**Log entry:**
+### 6. TLS
+
+**Auto-TLS (default):** When no explicit `tls.cert`/`tls.key` is configured:
+
+1. Check `tls.dir` (default `~/.axon-server/tls/`) for `ca.crt`
+2. If missing: generate ECDSA P-256 CA (10-year) + server cert (1-year)
+3. If `ca.crt` exists but `server.crt` missing or expires within 30 days: regenerate server cert
+4. Log CA path + SHA-256 fingerprint
+5. SANs: always `localhost` + `127.0.0.1` + listen address hostname
+
+**Explicit TLS:** Set `tls.cert` and `tls.key` to use your own certificates.
+
+**Disable TLS:** Set `tls.auto: false` with no cert/key. Server logs a warning.
+
+### 7. Audit Logger
+
+Logs every operation through the server.
 
 ```go
 type AuditEntry struct {
@@ -186,96 +182,64 @@ type AuditEntry struct {
     UserID     string
     NodeID     string
     Action     string    // "exec", "read", "write", "forward", "node.remove"
-    Detail     string    // Command string, file path, or port mapping
+    Detail     string    // command, path, or port
     Result     string    // "success", "error", "timeout"
     DurationMs int64
-    Error      string    // Error message if failed
+    Error      string
 }
 ```
 
-**Storage (Phase 1):** SQLite
+- Storage: SQLite (separate file from data DB)
+- Async write: buffered channel → background writer
+- Non-blocking: audit failure does not block operations
 
-```sql
-CREATE TABLE audit_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    node_id TEXT NOT NULL,
-    action TEXT NOT NULL,
-    detail TEXT,
-    result TEXT NOT NULL,
-    duration_ms INTEGER,
-    error TEXT
-);
+### 8. Shared Database
 
-CREATE INDEX idx_audit_timestamp ON audit_log(timestamp);
-CREATE INDEX idx_audit_node ON audit_log(node_id);
-CREATE INDEX idx_audit_user ON audit_log(user_id);
+All persistent state (except audit) lives in a **single SQLite database** with WAL mode:
+
+```go
+db, err := sql.Open("sqlite", dataDBPath)
+db.Exec("PRAGMA journal_mode=WAL")
+
+registryStore := registry.NewSQLiteStoreFromDB(db)
+tokenStore    := auth.NewTokenStoreFromDB(db)
+userStore     := auth.NewUserStoreFromDB(db)
 ```
 
-**Behavior:**
-- Async write (buffered channel → background writer)
-- Non-blocking: audit failure should not block operations
-- Retention: configurable, default keep all (Phase 1)
+Each store creates its own tables via `CREATE TABLE IF NOT EXISTS`. The shared connection is closed last in `GracefulStop` after all stores are shut down.
 
 ## Server Config
 
-```yaml
-# /etc/axon-server/config.yaml
-
-listen: ":443"
-
-tls:
-  cert: "/etc/axon-server/tls/server.crt"
-  key: "/etc/axon-server/tls/server.key"
-
-auth:
-  jwt_signing_key: "${AXON_JWT_KEY}"      # From environment variable
-  token_expiry: "24h"
-
-users:
-  - username: gary
-    password_hash: "$2a$10$..."
-    node_ids: ["*"]
-
-heartbeat:
-  interval_seconds: 10       # Sent to agents
-  timeout_multiplier: 3      # offline after 3× missed heartbeats
-
-audit:
-  db_path: "/var/lib/axon-server/audit.db"
-
-agent_tokens:
-  - token: "${AXON_AGENT_TOKEN_1}"
-    allowed_node_name: "web-1"    # Optional: restrict which name this token can register
-  - token: "${AXON_AGENT_TOKEN_2}"
-    allowed_node_name: ""         # Empty = any name
-```
+See [Configuration Reference](configuration.md) for the full YAML spec.
 
 ## Startup Sequence
 
 ```
 1. Load config (file + env vars)
-2. Initialize SQLite (audit log)
-3. Initialize node registry (empty)
-4. Initialize auth module (load signing key, user store)
-5. Start gRPC server (TLS)
-   - Register ControlService
-   - Register OperationsService
-   - Register ManagementService
-6. Start heartbeat monitor (background goroutine)
-7. Ready
+2. Open shared SQLite database (WAL mode)
+3. Initialize registry store → load all nodes (mark offline)
+4. Initialize token store → load revoked JTIs into memory
+5. Initialize token checker
+6. Initialize user store → bootstrap config users (INSERT OR IGNORE)
+7. Auto-TLS: generate or load certificates
+8. Build gRPC server with auth interceptors
+9. Initialize audit store + writer
+10. Register all gRPC services
+11. Start heartbeat monitor (background goroutine)
+12. Serve
 ```
 
 ## Graceful Shutdown
 
 ```
 1. Stop accepting new connections
-2. Wait for in-flight RPCs to complete (with timeout)
-3. Close all agent control streams (agents will reconnect)
-4. Flush audit log buffer
-5. Close SQLite
-6. Exit
+2. GracefulStop gRPC (wait for in-flight RPCs)
+3. Close audit writer (flush buffer)
+4. Close user store
+5. Close token store
+6. Close registry (flush heartbeat batch)
+7. Close shared database
+8. Exit
 ```
 
 ## Command
@@ -284,19 +248,15 @@ agent_tokens:
 
 ```
 $ axon-server start --config /etc/axon-server/config.yaml
-[INFO] loading config from /etc/axon-server/config.yaml
-[INFO] audit database initialized at /var/lib/axon-server/audit.db
-[INFO] gRPC server listening on :443 (TLS)
-[INFO] ready
+[INFO] server: auto-TLS: generated CA cert ~/.axon-server/tls/ca.crt (SHA-256: AA:BB:...)
+[INFO] server: gRPC listening on :9090 (TLS)
 ```
 
-- **Flags**:
-  - `--config <path>` — config file path (default: `./config.yaml`)
-  - `--foreground` — run in foreground
+- **Flags**: `--config <path>` — config file path (default: `./config.yaml`)
 
 ### `axon-server version`
 
 ```
 $ axon-server version
-axon-server 0.1.0 (go1.22, linux/amd64)
+axon-server 0.1.0 (go1.25, darwin/arm64)
 ```

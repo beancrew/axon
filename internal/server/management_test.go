@@ -25,7 +25,7 @@ type fullTestEnv struct {
 	cancel context.CancelFunc
 }
 
-func newFullTestEnv(t *testing.T, users []UserEntry) *fullTestEnv {
+func newFullTestEnv(t *testing.T, users []auth.UserEntry) *fullTestEnv {
 	t.Helper()
 
 	cfg := ServerConfig{
@@ -76,7 +76,7 @@ func newFullTestEnv(t *testing.T, users []UserEntry) *fullTestEnv {
 // authedCtx adds a valid CLI JWT as gRPC authorization metadata.
 func authedCtx(t *testing.T, userID string, nodeIDs []string) context.Context {
 	t.Helper()
-	tok, err := auth.SignCLIToken(testSecret, userID, nodeIDs, time.Hour)
+	tok, _, err := auth.SignCLIToken(testSecret, userID, nodeIDs, time.Hour)
 	if err != nil {
 		t.Fatalf("SignCLIToken: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestManagement_RemoveNode_NotFound(t *testing.T) {
 }
 
 func TestManagement_Login_Success(t *testing.T) {
-	users := []UserEntry{
+	users := []auth.UserEntry{
 		{Username: "gary", PasswordHash: hashPassword(t, "secret123"), NodeIDs: []string{"*"}},
 	}
 	env := newFullTestEnv(t, users)
@@ -304,7 +304,7 @@ func TestManagement_Login_Success(t *testing.T) {
 }
 
 func TestManagement_Login_InvalidPassword(t *testing.T) {
-	users := []UserEntry{
+	users := []auth.UserEntry{
 		{Username: "gary", PasswordHash: hashPassword(t, "correct"), NodeIDs: []string{"*"}},
 	}
 	env := newFullTestEnv(t, users)

@@ -33,6 +33,7 @@ type Harness struct {
 
 	opts harnessOpts
 
+	agentToken  string // JWT token used by the primary agent
 	agentNodeID string
 	agentCancel context.CancelFunc
 }
@@ -42,7 +43,7 @@ type harnessOpts struct {
 	heartbeatInterval time.Duration
 	heartbeatTimeout  time.Duration
 	agentNodeName     string
-	users             []server.UserEntry
+	users             []auth.UserEntry
 }
 
 func defaultOpts() harnessOpts {
@@ -78,7 +79,7 @@ func WithAgentNodeName(name string) HarnessOption {
 }
 
 // WithUsers sets the CLI user credentials for Login tests.
-func WithUsers(users []server.UserEntry) HarnessOption {
+func WithUsers(users []auth.UserEntry) HarnessOption {
 	return func(o *harnessOpts) { o.users = users }
 }
 
@@ -116,7 +117,7 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 	_ = srvErrCh
 
 	// Build agent config.
-	agentToken, err := auth.SignAgentToken(opts.jwtSecret, "integration-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(opts.jwtSecret, "integration-node", time.Hour)
 	if err != nil {
 		cancel()
 		t.Fatalf("harness: sign agent token: %v", err)
@@ -147,6 +148,7 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 		lis:         lis,
 		cancel:      cancel,
 		opts:        opts,
+		agentToken:  agentToken,
 		agentCancel: agentCancel,
 	}
 
@@ -207,6 +209,9 @@ func (h *Harness) Registry() *registry.Registry { return h.srv.Registry() }
 // AgentNodeID returns the node ID assigned to the agent.
 func (h *Harness) AgentNodeID() string { return h.agentNodeID }
 
+// AgentToken returns the JWT token used by the primary agent.
+func (h *Harness) AgentToken() string { return h.agentToken }
+
 // CLIConn returns a gRPC client connection authenticated with a CLI JWT token
 // that has wildcard ("*") node access.
 func (h *Harness) CLIConn() *grpc.ClientConn {
@@ -219,7 +224,7 @@ func (h *Harness) CLIConn() *grpc.ClientConn {
 func (h *Harness) CLIConnWithAccess(nodeIDs ...string) *grpc.ClientConn {
 	h.t.Helper()
 
-	token, err := auth.SignCLIToken(h.opts.jwtSecret, "test-user", nodeIDs, time.Hour)
+	token, _, err := auth.SignCLIToken(h.opts.jwtSecret, "test-user", nodeIDs, time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign CLI token: %v", err)
 	}
@@ -267,7 +272,7 @@ func (h *Harness) UnauthConn() *grpc.ClientConn {
 func (h *Harness) ConnectAgent(name string) (*agent.Agent, string) {
 	h.t.Helper()
 
-	agentToken, err := auth.SignAgentToken(h.opts.jwtSecret, "extra-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(h.opts.jwtSecret, "extra-node", time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign agent token: %v", err)
 	}
@@ -296,11 +301,40 @@ func (h *Harness) ConnectAgent(name string) (*agent.Agent, string) {
 	return agt, nodeID
 }
 
+// ConnectAgentWithToken connects a new agent using the given JWT token and
+// waits for it to register. Use this when the reconnecting agent must present
+// the same token hash as the previously registered node.
+func (h *Harness) ConnectAgentWithToken(name, token string) (*agent.Agent, string) {
+	h.t.Helper()
+
+	agentCfg := config.AgentConfig{
+		ServerAddr:  "passthrough://bufnet",
+		Token:       token,
+		NodeName:    name,
+		TLSInsecure: true,
+	}
+
+	agt := agent.NewAgent(agentCfg, "")
+	agt.SetDialOverride(grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return h.lis.DialContext(ctx)
+	}))
+
+	agentCtx, agentCancel := context.WithCancel(context.Background())
+	go func() {
+		_ = agt.Run(agentCtx)
+	}()
+
+	h.t.Cleanup(agentCancel)
+
+	nodeID := h.waitForNodeByName(name)
+	return agt, nodeID
+}
+
 // ConnectAgentWithHandler connects a new agent with a custom TaskHandler.
 func (h *Harness) ConnectAgentWithHandler(name string, handler agent.TaskHandler) (*agent.Agent, string) {
 	h.t.Helper()
 
-	agentToken, err := auth.SignAgentToken(h.opts.jwtSecret, "task-node", time.Hour)
+	agentToken, _, err := auth.SignAgentToken(h.opts.jwtSecret, "task-node", time.Hour)
 	if err != nil {
 		h.t.Fatalf("harness: sign agent token: %v", err)
 	}

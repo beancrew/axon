@@ -176,6 +176,7 @@ type RegisterRequest struct {
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`                       // Agent token (one-time registration)
 	NodeName      string                 `protobuf:"bytes,2,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"` // Desired node name (falls back to hostname)
 	Info          *NodeInfo              `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`                         // Initial node info
+	NodeId        string                 `protobuf:"bytes,4,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`       // Non-empty on reconnection (stable identity)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -229,6 +230,13 @@ func (x *RegisterRequest) GetInfo() *NodeInfo {
 		return x.Info
 	}
 	return nil
+}
+
+func (x *RegisterRequest) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
 }
 
 type Heartbeat struct {
@@ -706,11 +714,12 @@ const file_control_proto_rawDesc = "" +
 	"\bregister\x18\x01 \x01(\v2\x1d.axon.control.RegisterRequestH\x00R\bregister\x127\n" +
 	"\theartbeat\x18\x02 \x01(\v2\x17.axon.control.HeartbeatH\x00R\theartbeat\x125\n" +
 	"\tnode_info\x18\x03 \x01(\v2\x16.axon.control.NodeInfoH\x00R\bnodeInfoB\t\n" +
-	"\apayload\"p\n" +
+	"\apayload\"\x89\x01\n" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12*\n" +
-	"\x04info\x18\x03 \x01(\v2\x16.axon.control.NodeInfoR\x04info\")\n" +
+	"\x04info\x18\x03 \x01(\v2\x16.axon.control.NodeInfoR\x04info\x12\x17\n" +
+	"\anode_id\x18\x04 \x01(\tR\x06nodeId\")\n" +
 	"\tHeartbeat\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\"\xc5\x01\n" +
 	"\bNodeInfo\x12\x1a\n" +

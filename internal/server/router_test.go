@@ -38,7 +38,7 @@ func TestRouter_Route_PermissionDenied(t *testing.T) {
 
 func TestRouter_Route_WildcardAccess(t *testing.T) {
 	reg := registry.NewRegistry(30 * time.Second)
-	_ = reg.Register("node-1", "web-1", registry.NodeInfo{})
+	_ = reg.Register("node-1", "web-1", "", registry.NodeInfo{})
 	r := newRouter(reg)
 
 	claims := &auth.Claims{UserID: "admin", NodeIDs: []string{"*"}, Kind: auth.KindCLI}
@@ -66,7 +66,7 @@ func TestRouter_Route_NotFound(t *testing.T) {
 
 func TestRouter_Route_LookupByName(t *testing.T) {
 	reg := registry.NewRegistry(30 * time.Second)
-	_ = reg.Register("uuid-1", "web-1", registry.NodeInfo{})
+	_ = reg.Register("uuid-1", "web-1", "", registry.NodeInfo{})
 	r := newRouter(reg)
 
 	claims := &auth.Claims{UserID: "user1", NodeIDs: []string{"web-1"}, Kind: auth.KindCLI}
@@ -83,7 +83,7 @@ func TestRouter_Route_LookupByName(t *testing.T) {
 
 func TestRouter_Route_Offline(t *testing.T) {
 	reg := registry.NewRegistry(30 * time.Second)
-	_ = reg.Register("node-1", "web-1", registry.NodeInfo{})
+	_ = reg.Register("node-1", "web-1", "", registry.NodeInfo{})
 	_ = reg.MarkOffline("node-1")
 	r := newRouter(reg)
 

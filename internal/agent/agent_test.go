@@ -151,7 +151,7 @@ func newTestEnv(t *testing.T, heartbeatInterval int32) *testEnv {
 
 func (e *testEnv) agentConfig(t *testing.T) config.AgentConfig {
 	t.Helper()
-	tok, err := auth.SignAgentToken(testSecret, "pre-node", time.Hour)
+	tok, _, err := auth.SignAgentToken(testSecret, "pre-node", time.Hour)
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}

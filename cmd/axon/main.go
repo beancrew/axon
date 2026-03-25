@@ -27,18 +27,22 @@ func main() {
 
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "axon",
-		Short: "Axon CLI — remote operations on agent nodes",
-		Long:  "Axon connects AI agents to real machines. Use this CLI to execute commands, read/write files, and forward ports on remote nodes.",
+		Use:           "axon",
+		Short:         "Axon CLI — remote operations on agent nodes",
+		Long:          "Axon connects AI agents to real machines. Use this CLI to execute commands, read/write files, and forward ports on remote nodes.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+
+	root.PersistentFlags().StringVar(&globalCACert, "ca-cert", "", "path to CA certificate for TLS verification")
+	root.PersistentFlags().BoolVar(&globalTLSInsecure, "tls-insecure", false, "skip TLS certificate verification (insecure)")
 
 	root.AddCommand(
 		versionCmd(),
 		configCmd(),
 		nodeCmd(),
 		authCmd(),
+		userCmd(),
 		execCmd(),
 		readCmd(),
 		writeCmd(),
@@ -90,8 +94,12 @@ func configGetCmd() *cobra.Command {
 				fmt.Println(display.MaskToken(cfg.Token))
 			case "output_format":
 				fmt.Println(cfg.OutputFormat)
+			case "ca_cert":
+				fmt.Println(cfg.CACert)
+			case "tls_insecure":
+				fmt.Println(cfg.TLSInsecure)
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format)", key)
+				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format, ca_cert, tls_insecure)", key)
 			}
 			return nil
 		},
@@ -119,8 +127,12 @@ func configSetCmd() *cobra.Command {
 				cfg.Token = value
 			case "output_format":
 				cfg.OutputFormat = value
+			case "ca_cert":
+				cfg.CACert = value
+			case "tls_insecure":
+				cfg.TLSInsecure = value == "true" || value == "1"
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format)", key)
+				return fmt.Errorf("unknown config key: %s (supported: server, token, output_format, ca_cert, tls_insecure)", key)
 			}
 			if err := config.SaveCLIConfig(cfgPath, cfg); err != nil {
 				return fmt.Errorf("save config: %w", err)

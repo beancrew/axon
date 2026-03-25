@@ -4,6 +4,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -31,6 +32,7 @@ type NodeInfo struct {
 type NodeEntry struct {
 	NodeID        string
 	NodeName      string
+	TokenHash     string // SHA-256 of the agent token used at first registration
 	Info          NodeInfo
 	Status        string // "online" | "offline"
 	ConnectedAt   time.Time
@@ -45,44 +47,86 @@ const (
 	StatusOffline = "offline"
 )
 
-// Registry is a thread-safe in-memory store of node entries.
+// Registry is a thread-safe in-memory store of node entries with optional
+// persistent backing via a Store.
 type Registry struct {
 	mu               sync.RWMutex
 	nodes            map[string]*NodeEntry // keyed by NodeID
 	heartbeatTimeout time.Duration
+	store            Store              // optional persistence backend (nil = in-memory only)
+	hbBatcher        *heartbeatBatcher  // batched heartbeat persistence (nil if no store)
 }
 
 // NewRegistry creates a new Registry with the given heartbeat timeout.
-func NewRegistry(heartbeatTimeout time.Duration) *Registry {
-	return &Registry{
+// If store is non-nil, all nodes are loaded from the store on startup
+// (with status set to offline until agents reconnect).
+func NewRegistry(heartbeatTimeout time.Duration, store ...Store) *Registry {
+	reg := &Registry{
 		nodes:            make(map[string]*NodeEntry),
 		heartbeatTimeout: heartbeatTimeout,
 	}
+	if len(store) > 0 && store[0] != nil {
+		reg.store = store[0]
+		entries, err := reg.store.LoadAll()
+		if err != nil {
+			log.Printf("registry: load from store: %v", err)
+		} else {
+			for i := range entries {
+				entries[i].Status = StatusOffline
+				cp := entries[i]
+				reg.nodes[cp.NodeID] = &cp
+			}
+			if len(entries) > 0 {
+				log.Printf("registry: loaded %d nodes from store", len(entries))
+			}
+		}
+		reg.hbBatcher = newHeartbeatBatcher(reg.store, defaultFlushInterval)
+		reg.hbBatcher.Start()
+	}
+	return reg
 }
 
 // Register adds or updates a node entry, setting its status to online.
-func (r *Registry) Register(nodeID, nodeName string, info NodeInfo) error {
+// tokenHash is the SHA-256 of the agent token (required; pass "" when not applicable).
+func (r *Registry) Register(nodeID, nodeName, tokenHash string, info NodeInfo) error {
 	if nodeID == "" {
 		return fmt.Errorf("registry: register: nodeID must not be empty")
 	}
 	now := time.Now()
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// Check for name collision from a different node_id.
+	for id, e := range r.nodes {
+		if e.NodeName == nodeName && id != nodeID {
+			return fmt.Errorf("registry: register: node name %q is already used by node %s", nodeName, id)
+		}
+	}
+
 	if existing, ok := r.nodes[nodeID]; ok {
-		// Re-registration: update fields but preserve RegisteredAt.
+		// Re-registration: update fields, preserve RegisteredAt, update TokenHash if provided.
 		existing.NodeName = nodeName
 		existing.Info = info
 		existing.Status = StatusOnline
 		existing.ConnectedAt = now
 		existing.LastHeartbeat = now
 		existing.stream = nil
+		if tokenHash != "" {
+			existing.TokenHash = tokenHash
+		}
+		if r.store != nil {
+			if err := r.store.Save(existing); err != nil {
+				log.Printf("registry: persist re-register %s: %v", nodeID, err)
+			}
+		}
 		return nil
 	}
 
-	r.nodes[nodeID] = &NodeEntry{
+	entry := &NodeEntry{
 		NodeID:        nodeID,
 		NodeName:      nodeName,
+		TokenHash:     tokenHash,
 		Info:          info,
 		Status:        StatusOnline,
 		ConnectedAt:   now,
@@ -90,11 +134,19 @@ func (r *Registry) Register(nodeID, nodeName string, info NodeInfo) error {
 		RegisteredAt:  now,
 		Labels:        make(map[string]string),
 	}
+	r.nodes[nodeID] = entry
+
+	if r.store != nil {
+		if err := r.store.Save(entry); err != nil {
+			log.Printf("registry: persist register %s: %v", nodeID, err)
+		}
+	}
 	return nil
 }
 
 // UpdateHeartbeat updates the LastHeartbeat timestamp for the given node.
 func (r *Registry) UpdateHeartbeat(nodeID string) error {
+	now := time.Now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -102,7 +154,10 @@ func (r *Registry) UpdateHeartbeat(nodeID string) error {
 	if !ok {
 		return fmt.Errorf("registry: update heartbeat: node %q not found", nodeID)
 	}
-	entry.LastHeartbeat = time.Now()
+	entry.LastHeartbeat = now
+	if r.hbBatcher != nil {
+		r.hbBatcher.Record(nodeID, now)
+	}
 	return nil
 }
 
@@ -117,6 +172,11 @@ func (r *Registry) MarkOffline(nodeID string) error {
 	}
 	entry.Status = StatusOffline
 	entry.stream = nil
+	if r.store != nil {
+		if err := r.store.UpdateStatus(nodeID, StatusOffline); err != nil {
+			log.Printf("registry: persist mark offline %s: %v", nodeID, err)
+		}
+	}
 	return nil
 }
 
@@ -129,6 +189,11 @@ func (r *Registry) Remove(nodeID string) error {
 		return fmt.Errorf("registry: remove: node %q not found", nodeID)
 	}
 	delete(r.nodes, nodeID)
+	if r.store != nil {
+		if err := r.store.Delete(nodeID); err != nil {
+			log.Printf("registry: persist remove %s: %v", nodeID, err)
+		}
+	}
 	return nil
 }
 
@@ -217,6 +282,18 @@ func (r *Registry) StartMonitor(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// Close shuts down the heartbeat batcher (flushing pending writes) and the
+// backing store, if any. Safe to call even without a store.
+func (r *Registry) Close() error {
+	if r.hbBatcher != nil {
+		r.hbBatcher.Stop()
+	}
+	if r.store != nil {
+		return r.store.Close()
+	}
+	return nil
 }
 
 // sweepExpired marks all online nodes whose heartbeat has expired as offline.

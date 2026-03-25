@@ -10,6 +10,12 @@ service ManagementService {
   rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
   rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
 }
 
 // ─── Node Management ───
@@ -62,4 +68,78 @@ message LoginResponse {
   string token = 1;           // JWT token
   int64 expires_at = 2;       // Unix timestamp
   string error = 3;
+}
+
+// ─── Token Management ───
+
+message RevokeTokenRequest {
+  string token_id = 1;       // JWT ID (jti)
+}
+
+message RevokeTokenResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListTokensRequest {
+  string kind = 1;            // "cli", "agent", or "" for all
+}
+
+message ListTokensResponse {
+  repeated TokenInfo tokens = 1;
+}
+
+message TokenInfo {
+  string id = 1;              // JWT ID (jti)
+  string kind = 2;
+  string user_id = 3;
+  int64 issued_at = 4;
+  int64 expires_at = 5;
+}
+
+// ─── User Management ───
+
+message CreateUserRequest {
+  string username = 1;
+  string password = 2;
+  repeated string node_ids = 3;
+}
+
+message CreateUserResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message UpdateUserRequest {
+  string username = 1;
+  string password = 2;        // empty means leave password unchanged
+  repeated string node_ids = 3;
+}
+
+message UpdateUserResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message DeleteUserRequest {
+  string username = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated UserInfo users = 1;
+}
+
+message UserInfo {
+  string username = 1;
+  repeated string node_ids = 2;
+  int64 created_at = 3;       // Unix timestamp
+  int64 updated_at = 4;       // Unix timestamp
+  bool disabled = 5;
 }

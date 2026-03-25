@@ -4,12 +4,18 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
+	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	_ "modernc.org/sqlite" // SQLite driver
 
 	controlpb "github.com/garysng/axon/gen/proto/control"
 	managementpb "github.com/garysng/axon/gen/proto/management"
@@ -17,6 +23,7 @@ import (
 	"github.com/garysng/axon/internal/server/registry"
 	"github.com/garysng/axon/pkg/audit"
 	"github.com/garysng/axon/pkg/auth"
+	autotls "github.com/garysng/axon/pkg/tls"
 )
 
 // ServerConfig holds configuration for the gRPC server.
@@ -24,20 +31,27 @@ type ServerConfig struct {
 	ListenAddr        string
 	TLSCertPath       string
 	TLSKeyPath        string
+	TLSAuto           bool   // auto-generate self-signed CA + server cert if no explicit cert is set
+	TLSDir            string // directory for auto-generated TLS files; defaults to ~/.axon-server/tls
 	JWTSecret         string
 	HeartbeatInterval time.Duration
 	HeartbeatTimeout  time.Duration
-	AuditDBPath       string      // SQLite path; empty or ":memory:" for in-process
-	Users             []UserEntry // CLI user credentials for Login
+	AuditDBPath       string           // SQLite path for audit log; empty defaults to ":memory:"
+	DataDBPath        string           // SQLite path for registry/token/user stores; empty defaults to ":memory:"
+	Users             []auth.UserEntry // bootstrap users loaded from config YAML
 }
 
 // Server wraps a gRPC server with its dependencies.
 type Server struct {
-	cfg         ServerConfig
-	grpc        *grpc.Server
-	registry    *registry.Registry
-	control     *ControlService
-	auditWriter *audit.Writer
+	cfg          ServerConfig
+	grpc         *grpc.Server
+	registry     *registry.Registry
+	control      *ControlService
+	auditWriter  *audit.Writer
+	userStore    *auth.UserStore
+	tokenStore   *auth.TokenStore
+	tokenChecker *auth.TokenChecker
+	dataDB       *sql.DB // shared database; closed last in GracefulStop
 }
 
 // NewServer creates a new Server with the given configuration.
@@ -59,16 +73,93 @@ func (s *Server) Start(ctx context.Context) error {
 // serve is the internal implementation shared by Start and test helpers
 // that supply their own net.Listener (e.g. bufconn).
 func (s *Server) serve(ctx context.Context, lis net.Listener) error {
-	opts, err := s.buildServerOptions()
+	// Open the single shared database for registry, token, and user stores.
+	dataDBPath := s.cfg.DataDBPath
+	if dataDBPath == "" {
+		dataDBPath = ":memory:"
+	}
+	db, err := sql.Open("sqlite", dataDBPath)
+	if err != nil {
+		return fmt.Errorf("server: open data db: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		_ = db.Close()
+		return fmt.Errorf("server: set WAL: %w", err)
+	}
+	s.dataDB = db
+
+	// Build registry with its SQLite backing store.
+	regStore, err := registry.NewSQLiteStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init registry store: %w", err)
+	}
+	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout, regStore)
+	s.control = newControlService(s.registry, s.cfg)
+
+	// Initialize token management (store + in-memory revocation checker).
+	tokenStore, err := auth.NewTokenStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init token store: %w", err)
+	}
+	s.tokenStore = tokenStore
+
+	tokenChecker, err := auth.NewTokenChecker(tokenStore)
+	if err != nil {
+		return fmt.Errorf("server: init token checker: %w", err)
+	}
+	s.tokenChecker = tokenChecker
+
+	// Initialize user store and bootstrap config users.
+	userStore, err := auth.NewUserStoreFromDB(db)
+	if err != nil {
+		return fmt.Errorf("server: init user store: %w", err)
+	}
+	s.userStore = userStore
+	// Bootstrap: seed config-defined users into the DB (skip if already present).
+	// NOTE: At least one bootstrap user in config is required for a fresh DB,
+	// since user management RPCs require authentication.
+	for i := range s.cfg.Users {
+		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
+	}
+
+	// Auto-TLS: generate a self-signed CA + server cert when enabled and no
+	// explicit cert/key paths are configured.
+	if s.cfg.TLSAuto && s.cfg.TLSCertPath == "" {
+		tlsDir := s.cfg.TLSDir
+		if tlsDir == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("server: resolve home dir for TLS: %w", err)
+			}
+			tlsDir = filepath.Join(home, ".axon-server", "tls")
+		}
+		// Use the listen address host as the server cert CN/SAN when it is a
+		// specific hostname rather than a wildcard bind address.
+		hostname := "localhost"
+		if host, _, err := net.SplitHostPort(s.cfg.ListenAddr); err == nil &&
+			host != "" && host != "0.0.0.0" && host != "::" {
+			hostname = host
+		}
+		caCertPath, serverCertPath, serverKeyPath, generated, err := autotls.EnsureTLS(tlsDir, hostname)
+		if err != nil {
+			return fmt.Errorf("server: auto-TLS: %w", err)
+		}
+		s.cfg.TLSCertPath = serverCertPath
+		s.cfg.TLSKeyPath = serverKeyPath
+		if generated {
+			fp, _ := autotls.CAFingerprint(caCertPath)
+			log.Printf("server: auto-TLS: generated CA cert %s (SHA-256: %s)", caCertPath, fp)
+		} else {
+			log.Printf("server: auto-TLS: using existing CA cert %s", caCertPath)
+		}
+	}
+
+	// Build gRPC server with interceptors that check revoked tokens.
+	opts, err := s.buildServerOptions(tokenChecker)
 	if err != nil {
 		return err
 	}
-
 	s.grpc = grpc.NewServer(opts...)
-
-	// Build registry and control service.
-	s.registry = registry.NewRegistry(s.cfg.HeartbeatTimeout)
-	s.control = newControlService(s.registry, s.cfg)
 
 	// Initialize audit.
 	auditDBPath := s.cfg.AuditDBPath
@@ -86,7 +177,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.cfg.Users, s.cfg.JWTSecret)
+	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
@@ -109,13 +200,26 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	return nil
 }
 
-// GracefulStop shuts down the gRPC server gracefully and flushes the audit log.
+// GracefulStop shuts down the gRPC server gracefully and releases all resources.
 func (s *Server) GracefulStop() {
 	if s.grpc != nil {
 		s.grpc.GracefulStop()
 	}
 	if s.auditWriter != nil {
 		_ = s.auditWriter.Close()
+	}
+	if s.userStore != nil {
+		_ = s.userStore.Close()
+	}
+	if s.tokenStore != nil {
+		_ = s.tokenStore.Close()
+	}
+	if s.registry != nil {
+		_ = s.registry.Close()
+	}
+	// Close the shared database last, after all stores have been shut down.
+	if s.dataDB != nil {
+		_ = s.dataDB.Close()
 	}
 }
 
@@ -125,8 +229,8 @@ func (s *Server) Registry() *registry.Registry {
 }
 
 // buildServerOptions constructs the gRPC server options, including TLS and auth
-// interceptors.
-func (s *Server) buildServerOptions() ([]grpc.ServerOption, error) {
+// interceptors. When checker is non-nil, revoked tokens are rejected.
+func (s *Server) buildServerOptions(checker *auth.TokenChecker) ([]grpc.ServerOption, error) {
 	var opts []grpc.ServerOption
 
 	// TLS is optional; only enabled when both cert and key paths are provided.
@@ -144,19 +248,19 @@ func (s *Server) buildServerOptions() ([]grpc.ServerOption, error) {
 
 	// The ControlService/Connect stream handles its own token validation, and
 	// ManagementService/Login is the unauthenticated entry point. All other
-	// methods require a valid JWT.
+	// methods require a valid JWT (with revocation check when checker != nil).
 	opts = append(opts,
-		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret)),
-		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret)),
+		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret, checker)),
+		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret, checker)),
 	)
 
 	return opts, nil
 }
 
-// skipLoginUnaryInterceptor wraps auth.UnaryInterceptor but bypasses JWT auth
-// for ManagementService/Login (which is the unauthenticated login endpoint).
-func skipLoginUnaryInterceptor(secret string) grpc.UnaryServerInterceptor {
-	inner := auth.UnaryInterceptor(secret)
+// skipLoginUnaryInterceptor wraps auth.UnaryInterceptorWithChecker but bypasses
+// JWT auth for ManagementService/Login (which is the unauthenticated login endpoint).
+func skipLoginUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.UnaryServerInterceptor {
+	inner := auth.UnaryInterceptorWithChecker(secret, checker)
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -170,11 +274,11 @@ func skipLoginUnaryInterceptor(secret string) grpc.UnaryServerInterceptor {
 	}
 }
 
-// skipConnectStreamInterceptor wraps auth.StreamInterceptor but bypasses JWT
-// auth for the ControlService/Connect method (which validates its own token
-// inside the handler).
-func skipConnectStreamInterceptor(secret string) grpc.StreamServerInterceptor {
-	inner := auth.StreamInterceptor(secret)
+// skipConnectStreamInterceptor wraps auth.StreamInterceptorWithChecker but
+// bypasses JWT auth for the ControlService/Connect method (which validates its
+// own token inside the handler).
+func skipConnectStreamInterceptor(secret string, checker *auth.TokenChecker) grpc.StreamServerInterceptor {
+	inner := auth.StreamInterceptorWithChecker(secret, checker)
 	return func(
 		srv interface{},
 		ss grpc.ServerStream,

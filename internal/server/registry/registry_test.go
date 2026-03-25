@@ -28,7 +28,7 @@ func sampleInfo() NodeInfo {
 func TestRegisterAndLookup(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
 
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -52,7 +52,7 @@ func TestRegisterAndLookup(t *testing.T) {
 
 func TestRegisterEmptyIDError(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("", "web-1", sampleInfo()); err == nil {
+	if err := r.Register("", "web-1", "", sampleInfo()); err == nil {
 		t.Fatal("expected error for empty nodeID")
 	}
 }
@@ -67,7 +67,7 @@ func TestLookupNotFound(t *testing.T) {
 
 func TestLookupByName(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestLookupByNameNotFound(t *testing.T) {
 
 func TestUpdateHeartbeat(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func TestUpdateHeartbeatNotFound(t *testing.T) {
 
 func TestMarkOffline(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestMarkOfflineNotFound(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -176,7 +176,7 @@ func TestList(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		id := fmt.Sprintf("node-%d", i)
 		name := fmt.Sprintf("web-%d", i)
-		if err := r.Register(id, name, sampleInfo()); err != nil {
+		if err := r.Register(id, name, "", sampleInfo()); err != nil {
 			t.Fatalf("Register %s: %v", id, err)
 		}
 	}
@@ -199,7 +199,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	timeout := 50 * time.Millisecond
 	r := NewRegistry(timeout)
 
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -223,7 +223,7 @@ func TestHeartbeatNotExpiredWhenUpdated(t *testing.T) {
 	timeout := 100 * time.Millisecond
 	r := NewRegistry(timeout)
 
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -269,7 +269,7 @@ func TestMonitorStopsOnContextCancel(t *testing.T) {
 
 func TestSetAndGetStream(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 
@@ -310,7 +310,7 @@ func TestGetStreamNotFound(t *testing.T) {
 
 func TestReRegister(t *testing.T) {
 	r := NewRegistry(30 * time.Second)
-	if err := r.Register("node-1", "web-1", sampleInfo()); err != nil {
+	if err := r.Register("node-1", "web-1", "", sampleInfo()); err != nil {
 		t.Fatalf("first Register: %v", err)
 	}
 	if err := r.MarkOffline("node-1"); err != nil {
@@ -320,7 +320,7 @@ func TestReRegister(t *testing.T) {
 	// Re-register same node — should come back online.
 	newInfo := sampleInfo()
 	newInfo.AgentVersion = "0.2.0"
-	if err := r.Register("node-1", "web-1", newInfo); err != nil {
+	if err := r.Register("node-1", "web-1", "", newInfo); err != nil {
 		t.Fatalf("second Register: %v", err)
 	}
 
@@ -343,7 +343,7 @@ func TestConcurrentSafety(t *testing.T) {
 	for i := 0; i < numNodes; i++ {
 		id := fmt.Sprintf("node-%d", i)
 		name := fmt.Sprintf("web-%d", i)
-		if err := r.Register(id, name, sampleInfo()); err != nil {
+		if err := r.Register(id, name, "", sampleInfo()); err != nil {
 			t.Fatalf("Register %s: %v", id, err)
 		}
 	}
