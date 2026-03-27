@@ -43,13 +43,7 @@ if [ ! -w "$INSTALL_DIR" ]; then
 fi
 
 # Get latest release tag from GitHub API
-# Use GITHUB_TOKEN if available to avoid rate limits.
-AUTH_HEADER=""
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-    AUTH_HEADER="Authorization: token ${GITHUB_TOKEN}"
-fi
-VERSION=$(curl -fsSL ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
-    "https://api.github.com/repos/${REPO}/releases/latest" \
+VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
     | grep '"tag_name"' \
     | head -n1 \
     | cut -d '"' -f4)
