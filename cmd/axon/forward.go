@@ -6,11 +6,10 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
+	"text/tabwriter"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -22,57 +21,113 @@ func forwardCmd() *cobra.Command {
 	var bindAddr string
 
 	cmd := &cobra.Command{
-		Use:   "forward <node> <local-port>:<remote-port>",
-		Short: "Forward a remote port to localhost",
-		Long:  "Listens on a local port and forwards TCP connections to a remote port on the specified node.",
+		Use:   "forward",
+		Short: "Manage port forwards",
+		Long:  "Manage port forwards to remote nodes. Use subcommands or provide <node> <local:remote> as shorthand for 'create'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Backward compat: axon forward <node> <local>:<remote>
+			if len(args) == 2 {
+				return runForwardCreate(cmd.OutOrStdout(), args[0], args[1], bindAddr)
+			}
+			return fmt.Errorf("expected subcommand or <node> <local-port>:<remote-port>")
+		},
+	}
+
+	cmd.Flags().StringVar(&bindAddr, "bind", "127.0.0.1", "bind address")
+	cmd.AddCommand(
+		forwardCreateCmd(),
+		forwardListCmd(),
+		forwardDeleteCmd(),
+		forwardDaemonCmd(),
+	)
+
+	return cmd
+}
+
+func forwardCreateCmd() *cobra.Command {
+	var bindAddr string
+
+	cmd := &cobra.Command{
+		Use:   "create <node> <local-port>:<remote-port>",
+		Short: "Create a port forward (non-blocking, returns forward ID)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nodeID := args[0]
-
-			localPort, remotePort, err := parsePorts(args[1])
-			if err != nil {
-				return err
-			}
-
-			client, closer, err := dialOperations()
-			if err != nil {
-				return err
-			}
-			defer closer()
-
-			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-			defer cancel()
-
-			listenAddr := fmt.Sprintf("%s:%d", bindAddr, localPort)
-			listener, err := net.Listen("tcp", listenAddr)
-			if err != nil {
-				return fmt.Errorf("listen on %s: %w", listenAddr, err)
-			}
-			defer func() { _ = listener.Close() }()
-
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Forwarding %s → %s:%d\nReady. Press Ctrl+C to stop.\n", listenAddr, nodeID, remotePort)
-
-			// Close listener on context cancel.
-			go func() {
-				<-ctx.Done()
-				_ = listener.Close()
-			}()
-
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					if ctx.Err() != nil {
-						return nil // graceful shutdown
-					}
-					return fmt.Errorf("accept: %w", err)
-				}
-				go handleForwardConn(ctx, client, conn, nodeID, remotePort)
-			}
+			return runForwardCreate(cmd.OutOrStdout(), args[0], args[1], bindAddr)
 		},
 	}
 
 	cmd.Flags().StringVar(&bindAddr, "bind", "127.0.0.1", "bind address")
 	return cmd
+}
+
+func forwardListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List active port forwards",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			forwards, err := daemonList()
+			if err != nil {
+				return err
+			}
+			if len(forwards) == 0 {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No active forwards.")
+				return nil
+			}
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+			_, _ = fmt.Fprintln(w, "ID\tNODE\tLOCAL\tREMOTE\tSTATUS\tCREATED")
+			for _, f := range forwards {
+				_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%s\t%s\n",
+					f.ID, f.Node, f.LocalPort, f.RemotePort, f.Status, relativeTime(f.CreatedAt.Unix()))
+			}
+			return w.Flush()
+		},
+	}
+}
+
+func forwardDeleteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <forward-id>",
+		Short: "Delete a port forward",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := daemonDelete(args[0]); err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Forward %s deleted\n", args[0])
+			return nil
+		},
+	}
+}
+
+func forwardDaemonCmd() *cobra.Command {
+	var foreground bool
+
+	cmd := &cobra.Command{
+		Use:    "daemon",
+		Short:  "Start forward daemon (internal use)",
+		Hidden: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runDaemon()
+		},
+	}
+
+	cmd.Flags().BoolVar(&foreground, "foreground", false, "run in foreground")
+	return cmd
+}
+
+func runForwardCreate(out io.Writer, node, portSpec, bindAddr string) error {
+	localPort, remotePort, err := parsePorts(portSpec)
+	if err != nil {
+		return err
+	}
+
+	id, err := daemonCreate(node, int(localPort), int(remotePort), bindAddr)
+	if err != nil {
+		return fmt.Errorf("create forward: %w", err)
+	}
+
+	_, _ = fmt.Fprintf(out, "Forward %s created: %s:%d → %s:%d\n", id, bindAddr, localPort, node, remotePort)
+	return nil
 }
 
 // handleForwardConn handles a single TCP connection by creating a gRPC
