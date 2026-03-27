@@ -82,6 +82,6 @@ case "$COMPONENT" in
     cli)
         echo "Next steps:"
         echo "  axon config set server <server-addr>"
-        echo "  axon auth login"
+        echo "  axon config set token <admin-token>"
         ;;
 esac
