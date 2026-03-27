@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	managementpb "github.com/garysng/axon/gen/proto/management"
@@ -9,7 +10,6 @@ import (
 	"github.com/garysng/axon/pkg/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -49,7 +49,10 @@ func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 		}
 		transportOpt = grpc.WithTransportCredentials(creds)
 	default:
-		transportOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
+		// Default: TLS with skip-verify. The default server deployment uses
+		// auto-TLS with a self-signed CA, so strict verification would fail.
+		// Users who need strict verification should set ca_cert in config.
+		transportOpt = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})) //nolint:gosec
 	}
 
 	opts := []grpc.DialOption{transportOpt}

@@ -27,6 +27,7 @@ var version = "dev"
 
 func main() {
 	if err := rootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 		var ee *exitError
 		if errors.As(err, &ee) {
 			os.Exit(ee.code)
@@ -168,9 +169,19 @@ func startCmd() *cobra.Command {
 			}
 
 			cfgPath := config.DefaultAgentConfigPath()
+
+			// Check if agent is enrolled (config file exists with a node_id from a successful join).
+			if _, statErr := os.Stat(cfgPath); os.IsNotExist(statErr) {
+				return fmt.Errorf("not enrolled — run \"axon-agent join <server-addr> <token>\" first")
+			}
+
 			cfg, err := config.LoadAgentConfig(cfgPath)
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
+			}
+
+			if cfg.NodeID == "" {
+				return fmt.Errorf("not enrolled — run \"axon-agent join <server-addr> <token>\" first")
 			}
 
 			// Apply flag overrides only when the flag was explicitly set.

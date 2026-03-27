@@ -46,7 +46,7 @@ func initCmd() *cobra.Command {
 			configPath := filepath.Join(flagDataDir, "config.yaml")
 
 			if _, err := os.Stat(configPath); err == nil && !flagForce {
-				return fmt.Errorf("config already exists at %s; use --force to overwrite\nTo view join tokens after starting the server, run: axon token list", configPath)
+				return fmt.Errorf("config already exists at %s\nTo regenerate, use --force. To manage tokens after starting the server, use the CLI: axon token list", configPath)
 			}
 
 			if flagAdmin == "" {

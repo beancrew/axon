@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -16,7 +17,7 @@ import (
 	managementpb "github.com/garysng/axon/gen/proto/management"
 	"github.com/garysng/axon/pkg/config"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 func authCmd() *cobra.Command {
@@ -71,9 +72,20 @@ func authLoginCmd() *cobra.Command {
 			password := string(passwordBytes)
 
 			// Connect without auth — Login RPC is unauthenticated.
-			conn, err := grpc.NewClient(cfg.ServerAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
+			// Use TLS with skip-verify by default (self-signed CA is the default server config).
+			var loginOpt grpc.DialOption
+			switch {
+			case cfg.CACert != "":
+				creds, err := credentials.NewClientTLSFromFile(cfg.CACert, "")
+				if err != nil {
+					return fmt.Errorf("load CA cert %q: %w", cfg.CACert, err)
+				}
+				loginOpt = grpc.WithTransportCredentials(creds)
+			default:
+				loginOpt = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})) //nolint:gosec
+			}
+
+			conn, err := grpc.NewClient(cfg.ServerAddr, loginOpt)
 			if err != nil {
 				return fmt.Errorf("connect to server %q: %w", cfg.ServerAddr, err)
 			}

@@ -72,7 +72,9 @@ exits with an error. Use 'axon-agent start' to reconnect an enrolled node.`,
 			case flagTLSInsecure:
 				transportCreds = grpc.WithTransportCredentials(insecure.NewCredentials())
 			default:
-				transportCreds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{}))
+				// TOFU: join is the trust-establishment step. The server returns
+				// ca_cert_pem which the agent saves for subsequent connections.
+				transportCreds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})) //nolint:gosec
 			}
 
 			conn, err := grpc.NewClient(serverAddr, transportCreds)
