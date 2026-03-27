@@ -4,18 +4,19 @@
 
 ## Overview
 
-`axon` is a single stateless binary. It reads local config (`~/.axon/config.yaml`) for server address and token, then talks to axon-server via gRPC.
+Axon has three binaries — `axon` (CLI), `axon-server`, and `axon-agent`. This page covers all commands across all three.
 
-## Global Flags
+## `axon` — CLI for Humans and AI Agents
+
+Reads local config (`~/.axon/config.yaml`) for server address and token, then talks to axon-server via gRPC.
+
+### Global Flags
 
 ```
 --ca-cert <path>     Path to CA certificate for TLS verification
---tls-insecure       Skip TLS certificate verification (dev only)
 ```
 
-These override values from the config file.
-
-## Config
+### Config
 
 Stored at `~/.axon/config.yaml`:
 
@@ -24,7 +25,6 @@ server_addr: "axon.example.com:9090"
 token: "eyJhbGciOiJIUzI1NiIs..."
 output_format: "table"
 ca_cert: "/path/to/ca.crt"
-tls_insecure: false
 ```
 
 See [Configuration Reference](configuration.md) for all fields.
@@ -258,6 +258,53 @@ User "deploy-bot" deleted.
 
 ---
 
+## Join Token Commands
+
+### `axon token create-join`
+
+Create a new join token for agent enrollment.
+
+```
+$ axon token create-join --max-uses 10 --expires 24h
+Join token created (ID: a1b2c3d4)
+
+   axon-join-abcdef1234567890...
+
+Enroll a node:
+   axon-agent join <SERVER_ADDR> axon-join-abcdef1234567890...
+```
+
+- **gRPC**: `ManagementService.CreateJoinToken` (unary)
+- **Flags**:
+  - `--max-uses <n>` — maximum number of uses (0 = unlimited, default)
+  - `--expires <duration>` — expiry duration (e.g. `24h`, `168h`)
+
+### `axon token list-join`
+
+List all join tokens with usage and status.
+
+```
+$ axon token list-join
+ID        USES  MAX  REVOKED  EXPIRES                    CREATED
+a1b2c3d4  3     10   no       2026-03-26T18:00:00+08:00  2026-03-25T18:00:00+08:00
+e5f6g7h8  0     inf  no       never                      2026-03-25T10:00:00+08:00
+```
+
+- **gRPC**: `ManagementService.ListJoinTokens` (unary)
+
+### `axon token revoke-join <token-id>`
+
+Revoke a join token by its short ID.
+
+```
+$ axon token revoke-join a1b2c3d4
+Join token revoked.
+```
+
+- **gRPC**: `ManagementService.RevokeJoinToken` (unary)
+
+---
+
 ## Config Commands
 
 ### `axon config set <key> <value>`
@@ -284,7 +331,109 @@ axon 0.1.0 (go1.25, darwin/arm64)
 
 ---
 
+## `axon-server` — Server Commands
+
+### `axon-server init`
+
+Initialize server configuration. Creates config file, JWT secret, admin user, SQLite database, and an initial join token.
+
+```
+$ axon-server init --admin admin --password secret
+Server initialized
+
+   Config:     ~/.axon-server/config.yaml
+   Database:   ~/.axon-server/axon.db
+   Listen:     :9090
+   Admin user: admin
+
+Start the server:
+   axon-server start --config ~/.axon-server/config.yaml
+
+Join a node:
+   axon-agent join <SERVER_IP>:9090 axon-join-ab12cd34...
+```
+
+- **Flags**:
+  - `--listen <addr>` — gRPC listen address (default: `:9090`)
+  - `--admin <name>` — admin username (default: `admin`)
+  - `--password <pass>` — admin password (prompted if omitted)
+  - `--data-dir <path>` — data directory (default: `~/.axon-server`)
+  - `--tls` — enable auto-TLS
+  - `--force` — overwrite existing config
+
+### `axon-server start`
+
+Start the server.
+
+```
+$ axon-server start --config ~/.axon-server/config.yaml
+```
+
+- **Flags**: `--config <path>` — config file path
+
+### `axon-server version`
+
+```
+$ axon-server version
+axon-server 0.1.0 (go1.25, darwin/arm64)
+```
+
+---
+
+## `axon-agent` — Agent Commands
+
+### `axon-agent join <server-addr> <join-token>`
+
+Enroll this machine as an agent node. Validates the join token, receives an agent JWT, saves config, and starts the agent.
+
+```
+$ axon-agent join 10.0.1.1:9090 axon-join-ab12cd34... --tls-insecure
+Node enrolled successfully
+
+   Node ID:    a1b2c3d4-...
+   Node Name:  my-node
+   Server:     10.0.1.1:9090
+   Config:     ~/.axon-agent/config.yaml
+
+Starting agent... (Ctrl+C to stop)
+```
+
+- **Flags**:
+  - `--name <name>` — node name (default: hostname)
+  - `--labels <key=value>` — labels (repeatable)
+  - `--ca-cert <path>` — CA certificate for TLS verification
+  - `--tls-insecure` — skip TLS (for servers without TLS)
+
+### `axon-agent start`
+
+Reconnect an already-enrolled agent using saved config.
+
+```
+$ axon-agent start
+```
+
+- **Flags**: `--config <path>` — config file path (default: `~/.axon-agent/config.yaml`)
+
+### `axon-agent stop`
+
+Stop the agent daemon.
+
+### `axon-agent status`
+
+Show agent status (connected/disconnected, node ID, server address).
+
+### `axon-agent version`
+
+```
+$ axon-agent version
+axon-agent 0.1.0 (go1.25, darwin/arm64)
+```
+
+---
+
 ## Command Summary
+
+### `axon` CLI
 
 | Command | Server | gRPC Mode | Auth |
 |---------|:------:|-----------|:----:|
@@ -299,13 +448,33 @@ axon 0.1.0 (go1.25, darwin/arm64)
 | `auth token` | ❌ | — | — |
 | `auth list-tokens` | ✅ | unary | ✅ |
 | `auth revoke` | ✅ | unary | ✅ |
-| `auth rotate` | — | — | — |
+| `token create-join` | ✅ | unary | ✅ |
+| `token list-join` | ✅ | unary | ✅ |
+| `token revoke-join` | ✅ | unary | ✅ |
 | `user create` | ✅ | unary | ✅ |
 | `user list` | ✅ | unary | ✅ |
 | `user update` | ✅ | unary | ✅ |
 | `user delete` | ✅ | unary | ✅ |
 | `config set/get` | ❌ | — | — |
 | `version` | ❌ | — | — |
+
+### `axon-server`
+
+| Command | Description |
+|---------|-------------|
+| `init` | Initialize config, DB, admin user, join token |
+| `start` | Start the gRPC server |
+| `version` | Show version |
+
+### `axon-agent`
+
+| Command | Description |
+|---------|-------------|
+| `join` | Enroll with a server using a join token |
+| `start` | Reconnect using saved config |
+| `stop` | Stop the agent |
+| `status` | Show agent status |
+| `version` | Show version |
 
 ## Exit Codes
 

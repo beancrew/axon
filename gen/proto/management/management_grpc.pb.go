@@ -19,16 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ManagementService_ListNodes_FullMethodName   = "/axon.management.ManagementService/ListNodes"
-	ManagementService_GetNode_FullMethodName     = "/axon.management.ManagementService/GetNode"
-	ManagementService_RemoveNode_FullMethodName  = "/axon.management.ManagementService/RemoveNode"
-	ManagementService_Login_FullMethodName       = "/axon.management.ManagementService/Login"
-	ManagementService_RevokeToken_FullMethodName = "/axon.management.ManagementService/RevokeToken"
-	ManagementService_ListTokens_FullMethodName  = "/axon.management.ManagementService/ListTokens"
-	ManagementService_CreateUser_FullMethodName  = "/axon.management.ManagementService/CreateUser"
-	ManagementService_UpdateUser_FullMethodName  = "/axon.management.ManagementService/UpdateUser"
-	ManagementService_DeleteUser_FullMethodName  = "/axon.management.ManagementService/DeleteUser"
-	ManagementService_ListUsers_FullMethodName   = "/axon.management.ManagementService/ListUsers"
+	ManagementService_ListNodes_FullMethodName       = "/axon.management.ManagementService/ListNodes"
+	ManagementService_GetNode_FullMethodName         = "/axon.management.ManagementService/GetNode"
+	ManagementService_RemoveNode_FullMethodName      = "/axon.management.ManagementService/RemoveNode"
+	ManagementService_Login_FullMethodName           = "/axon.management.ManagementService/Login"
+	ManagementService_RevokeToken_FullMethodName     = "/axon.management.ManagementService/RevokeToken"
+	ManagementService_ListTokens_FullMethodName      = "/axon.management.ManagementService/ListTokens"
+	ManagementService_CreateUser_FullMethodName      = "/axon.management.ManagementService/CreateUser"
+	ManagementService_UpdateUser_FullMethodName      = "/axon.management.ManagementService/UpdateUser"
+	ManagementService_DeleteUser_FullMethodName      = "/axon.management.ManagementService/DeleteUser"
+	ManagementService_ListUsers_FullMethodName       = "/axon.management.ManagementService/ListUsers"
+	ManagementService_CreateJoinToken_FullMethodName = "/axon.management.ManagementService/CreateJoinToken"
+	ManagementService_ListJoinTokens_FullMethodName  = "/axon.management.ManagementService/ListJoinTokens"
+	ManagementService_RevokeJoinToken_FullMethodName = "/axon.management.ManagementService/RevokeJoinToken"
+	ManagementService_JoinAgent_FullMethodName       = "/axon.management.ManagementService/JoinAgent"
 )
 
 // ManagementServiceClient is the client API for ManagementService service.
@@ -45,6 +49,12 @@ type ManagementServiceClient interface {
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
+	// ─── Join Token Management (requires JWT auth) ───
+	CreateJoinToken(ctx context.Context, in *CreateJoinTokenRequest, opts ...grpc.CallOption) (*CreateJoinTokenResponse, error)
+	ListJoinTokens(ctx context.Context, in *ListJoinTokensRequest, opts ...grpc.CallOption) (*ListJoinTokensResponse, error)
+	RevokeJoinToken(ctx context.Context, in *RevokeJoinTokenRequest, opts ...grpc.CallOption) (*RevokeJoinTokenResponse, error)
+	// ─── Agent Join (no auth required — token is self-authenticating) ───
+	JoinAgent(ctx context.Context, in *JoinAgentRequest, opts ...grpc.CallOption) (*JoinAgentResponse, error)
 }
 
 type managementServiceClient struct {
@@ -155,6 +165,46 @@ func (c *managementServiceClient) ListUsers(ctx context.Context, in *ListUsersRe
 	return out, nil
 }
 
+func (c *managementServiceClient) CreateJoinToken(ctx context.Context, in *CreateJoinTokenRequest, opts ...grpc.CallOption) (*CreateJoinTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateJoinTokenResponse)
+	err := c.cc.Invoke(ctx, ManagementService_CreateJoinToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managementServiceClient) ListJoinTokens(ctx context.Context, in *ListJoinTokensRequest, opts ...grpc.CallOption) (*ListJoinTokensResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListJoinTokensResponse)
+	err := c.cc.Invoke(ctx, ManagementService_ListJoinTokens_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managementServiceClient) RevokeJoinToken(ctx context.Context, in *RevokeJoinTokenRequest, opts ...grpc.CallOption) (*RevokeJoinTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeJoinTokenResponse)
+	err := c.cc.Invoke(ctx, ManagementService_RevokeJoinToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managementServiceClient) JoinAgent(ctx context.Context, in *JoinAgentRequest, opts ...grpc.CallOption) (*JoinAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinAgentResponse)
+	err := c.cc.Invoke(ctx, ManagementService_JoinAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ManagementServiceServer is the server API for ManagementService service.
 // All implementations must embed UnimplementedManagementServiceServer
 // for forward compatibility.
@@ -169,6 +219,12 @@ type ManagementServiceServer interface {
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
 	DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error)
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
+	// ─── Join Token Management (requires JWT auth) ───
+	CreateJoinToken(context.Context, *CreateJoinTokenRequest) (*CreateJoinTokenResponse, error)
+	ListJoinTokens(context.Context, *ListJoinTokensRequest) (*ListJoinTokensResponse, error)
+	RevokeJoinToken(context.Context, *RevokeJoinTokenRequest) (*RevokeJoinTokenResponse, error)
+	// ─── Agent Join (no auth required — token is self-authenticating) ───
+	JoinAgent(context.Context, *JoinAgentRequest) (*JoinAgentResponse, error)
 	mustEmbedUnimplementedManagementServiceServer()
 }
 
@@ -208,6 +264,18 @@ func (UnimplementedManagementServiceServer) DeleteUser(context.Context, *DeleteU
 }
 func (UnimplementedManagementServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUsers not implemented")
+}
+func (UnimplementedManagementServiceServer) CreateJoinToken(context.Context, *CreateJoinTokenRequest) (*CreateJoinTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateJoinToken not implemented")
+}
+func (UnimplementedManagementServiceServer) ListJoinTokens(context.Context, *ListJoinTokensRequest) (*ListJoinTokensResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListJoinTokens not implemented")
+}
+func (UnimplementedManagementServiceServer) RevokeJoinToken(context.Context, *RevokeJoinTokenRequest) (*RevokeJoinTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeJoinToken not implemented")
+}
+func (UnimplementedManagementServiceServer) JoinAgent(context.Context, *JoinAgentRequest) (*JoinAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method JoinAgent not implemented")
 }
 func (UnimplementedManagementServiceServer) mustEmbedUnimplementedManagementServiceServer() {}
 func (UnimplementedManagementServiceServer) testEmbeddedByValue()                           {}
@@ -410,6 +478,78 @@ func _ManagementService_ListUsers_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ManagementService_CreateJoinToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateJoinTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServiceServer).CreateJoinToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagementService_CreateJoinToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServiceServer).CreateJoinToken(ctx, req.(*CreateJoinTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ManagementService_ListJoinTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListJoinTokensRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServiceServer).ListJoinTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagementService_ListJoinTokens_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServiceServer).ListJoinTokens(ctx, req.(*ListJoinTokensRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ManagementService_RevokeJoinToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeJoinTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServiceServer).RevokeJoinToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagementService_RevokeJoinToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServiceServer).RevokeJoinToken(ctx, req.(*RevokeJoinTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ManagementService_JoinAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagementServiceServer).JoinAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagementService_JoinAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagementServiceServer).JoinAgent(ctx, req.(*JoinAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ManagementService_ServiceDesc is the grpc.ServiceDesc for ManagementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -456,6 +596,22 @@ var ManagementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUsers",
 			Handler:    _ManagementService_ListUsers_Handler,
+		},
+		{
+			MethodName: "CreateJoinToken",
+			Handler:    _ManagementService_CreateJoinToken_Handler,
+		},
+		{
+			MethodName: "ListJoinTokens",
+			Handler:    _ManagementService_ListJoinTokens_Handler,
+		},
+		{
+			MethodName: "RevokeJoinToken",
+			Handler:    _ManagementService_RevokeJoinToken_Handler,
+		},
+		{
+			MethodName: "JoinAgent",
+			Handler:    _ManagementService_JoinAgent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
