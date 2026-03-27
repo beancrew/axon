@@ -35,9 +35,6 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	root.PersistentFlags().StringVar(&globalCACert, "ca-cert", "", "path to CA certificate for TLS verification")
-	root.PersistentFlags().BoolVar(&globalTLSInsecure, "tls-insecure", false, "skip TLS certificate verification (insecure)")
-
 	root.AddCommand(
 		versionCmd(),
 		configCmd(),

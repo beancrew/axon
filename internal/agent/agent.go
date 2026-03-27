@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -147,6 +148,7 @@ func (a *Agent) runOnce(ctx context.Context) error {
 }
 
 // dial creates a gRPC client connection to the configured server.
+// Transport priority: ca_cert (strict TLS) > tls_insecure (TLS skip-verify) > plaintext.
 func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 
@@ -157,6 +159,8 @@ func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 			return nil, fmt.Errorf("load CA cert %q: %w", a.cfg.CACert, err)
 		}
 		opts = append(opts, grpc.WithTransportCredentials(creds))
+	case a.cfg.TLSInsecure:
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true}))) //nolint:gosec
 	default:
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}

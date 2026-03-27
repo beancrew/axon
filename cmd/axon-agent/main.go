@@ -416,7 +416,7 @@ func agentConfigGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a config value",
-		Long:  "Supported keys: server, token, name",
+		Long:  "Supported keys: server, token, name, tls_insecure, ca_cert",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAgentConfig(config.DefaultAgentConfigPath())
@@ -430,8 +430,12 @@ func agentConfigGetCmd() *cobra.Command {
 				_, _ = fmt.Fprintln(os.Stdout, display.MaskToken(cfg.Token))
 			case "name":
 				_, _ = fmt.Fprintln(os.Stdout, cfg.NodeName)
+			case "tls_insecure":
+				_, _ = fmt.Fprintln(os.Stdout, cfg.TLSInsecure)
+			case "ca_cert":
+				_, _ = fmt.Fprintln(os.Stdout, cfg.CACert)
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, name)", args[0])
+				return fmt.Errorf("unknown config key: %s (supported: server, token, name, tls_insecure, ca_cert)", args[0])
 			}
 			return nil
 		},
@@ -442,7 +446,7 @@ func agentConfigSetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a config value",
-		Long:  "Supported keys: server, token, name",
+		Long:  "Supported keys: server, token, name, tls_insecure, ca_cert",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfgPath := config.DefaultAgentConfigPath()
@@ -458,8 +462,12 @@ func agentConfigSetCmd() *cobra.Command {
 				cfg.Token = value
 			case "name":
 				cfg.NodeName = value
+			case "tls_insecure":
+				cfg.TLSInsecure = value == "true" || value == "1"
+			case "ca_cert":
+				cfg.CACert = value
 			default:
-				return fmt.Errorf("unknown config key: %s (supported: server, token, name)", key)
+				return fmt.Errorf("unknown config key: %s (supported: server, token, name, tls_insecure, ca_cert)", key)
 			}
 			if err := config.SaveAgentConfig(cfgPath, cfg); err != nil {
 				return fmt.Errorf("save config: %w", err)
