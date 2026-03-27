@@ -118,6 +118,8 @@ func (s *ManagementService) Login(_ context.Context, req *managementpb.LoginRequ
 			ExpiresAt: now.Add(tokenExpiry).Unix(),
 		})
 	}
+	log.Printf("server: user %q logged in", req.GetUsername())
+
 	return &managementpb.LoginResponse{
 		Token:     tok,
 		ExpiresAt: now.Add(tokenExpiry).Unix(),
@@ -355,6 +357,8 @@ func (s *ManagementService) JoinAgent(_ context.Context, req *managementpb.JoinA
 	if hbSeconds == 0 {
 		hbSeconds = 10
 	}
+
+	log.Printf("server: node %q (id=%s) enrolled via join-token", nodeName, nodeID)
 
 	return &managementpb.JoinAgentResponse{
 		Success:                  true,

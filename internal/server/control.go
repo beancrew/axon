@@ -107,6 +107,7 @@ func (cs *ControlService) Connect(stream controlpb.ControlService_ConnectServer)
 
 	// Mark node offline on disconnect (regardless of reason).
 	defer func() {
+		log.Printf("server: node %q (id=%s) disconnected", req.NodeName, nodeID)
 		if err := cs.reg.MarkOffline(nodeID); err != nil {
 			log.Printf("control: mark offline %s: %v", nodeID, err)
 		}
@@ -128,6 +129,8 @@ func (cs *ControlService) Connect(stream controlpb.ControlService_ConnectServer)
 	}); err != nil {
 		return status.Errorf(codes.Internal, "control: send register response: %v", err)
 	}
+
+	log.Printf("server: node %q (id=%s) connected", req.NodeName, nodeID)
 
 	// ── Step 2: message loop ───────────────────────────────────────────────────
 	for {
