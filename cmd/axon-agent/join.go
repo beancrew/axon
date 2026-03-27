@@ -22,10 +22,8 @@ import (
 
 func joinCmd() *cobra.Command {
 	var (
-		flagName       string
-		flagLabels     []string
-		flagCACert     string
-		flagTLSInsecure bool
+		flagName   string
+		flagLabels []string
 	)
 
 	cmd := &cobra.Command{
@@ -38,7 +36,10 @@ and saves the configuration to ~/.axon-agent/config.yaml. Then starts the
 agent control-plane loop in the foreground.
 
 If the node is already enrolled (node_id is present in config), this command
-exits with an error. Use 'axon-agent start' to reconnect an enrolled node.`,
+exits with an error. Use 'axon-agent start' to reconnect an enrolled node.
+
+TLS is controlled via config (axon-agent config set tls_insecure true).
+For non-TLS servers (default), no extra config is needed.`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serverAddr := args[0]
@@ -46,9 +47,12 @@ exits with an error. Use 'axon-agent start' to reconnect an enrolled node.`,
 
 			cfgPath := config.DefaultAgentConfigPath()
 
+			// Load existing config for TLS settings (may not exist yet — defaults are fine).
+			existingCfg, _ := config.LoadAgentConfig(cfgPath)
+
 			// Refuse to re-enroll an already-enrolled node.
-			if existing, err := config.LoadAgentConfig(cfgPath); err == nil && existing.NodeID != "" {
-				return fmt.Errorf("node already enrolled (node_id=%s); use 'axon-agent start' to connect", existing.NodeID)
+			if existingCfg != nil && existingCfg.NodeID != "" {
+				return fmt.Errorf("node already enrolled (node_id=%s); use 'axon-agent start' to connect", existingCfg.NodeID)
 			}
 
 			// Collect system information for the enrollment request.
@@ -59,22 +63,20 @@ exits with an error. Use 'axon-agent start' to reconnect an enrolled node.`,
 				nodeName = info.Hostname
 			}
 
-			// Build transport credentials: custom CA → TLS from file;
-			// --tls-insecure → plaintext; default → system TLS.
+			// Build transport credentials from agent config.
+			// Priority: ca_cert > tls_insecure > plaintext (default).
 			var transportCreds grpc.DialOption
 			switch {
-			case flagCACert != "":
-				creds, err := credentials.NewClientTLSFromFile(flagCACert, "")
+			case existingCfg != nil && existingCfg.CACert != "":
+				creds, err := credentials.NewClientTLSFromFile(existingCfg.CACert, "")
 				if err != nil {
-					return fmt.Errorf("load CA cert %q: %w", flagCACert, err)
+					return fmt.Errorf("load CA cert %q: %w", existingCfg.CACert, err)
 				}
 				transportCreds = grpc.WithTransportCredentials(creds)
-			case flagTLSInsecure:
-				transportCreds = grpc.WithTransportCredentials(insecure.NewCredentials())
-			default:
-				// TOFU: join is the trust-establishment step. The server returns
-				// ca_cert_pem which the agent saves for subsequent connections.
+			case existingCfg != nil && existingCfg.TLSInsecure:
 				transportCreds = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})) //nolint:gosec
+			default:
+				transportCreds = grpc.WithTransportCredentials(insecure.NewCredentials())
 			}
 
 			conn, err := grpc.NewClient(serverAddr, transportCreds)
@@ -157,7 +159,5 @@ exits with an error. Use 'axon-agent start' to reconnect an enrolled node.`,
 
 	cmd.Flags().StringVar(&flagName, "name", "", "node name (default: hostname)")
 	cmd.Flags().StringArrayVar(&flagLabels, "labels", nil, "label as key=value (repeatable)")
-	cmd.Flags().StringVar(&flagCACert, "ca-cert", "", "path to CA certificate for TLS verification")
-	cmd.Flags().BoolVar(&flagTLSInsecure, "tls-insecure", false, "disable TLS certificate verification")
 	return cmd
 }

@@ -156,10 +156,9 @@ func (e *testEnv) agentConfig(t *testing.T) config.AgentConfig {
 		t.Fatalf("sign token: %v", err)
 	}
 	return config.AgentConfig{
-		ServerAddr:  "passthrough://bufnet",
-		Token:       tok,
-		NodeName:    "test-agent",
-		TLSInsecure: true,
+		ServerAddr: "passthrough://bufnet",
+		Token:      tok,
+		NodeName:   "test-agent",
 	}
 }
 

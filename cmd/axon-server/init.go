@@ -173,17 +173,28 @@ func initCmd() *cobra.Command {
 			_, _ = fmt.Fprintf(out, "   Config:     %s\n", configPath)
 			_, _ = fmt.Fprintf(out, "   Database:   %s\n", dbPath)
 			_, _ = fmt.Fprintf(out, "   Listen:     %s\n", flagListen)
+			if flagTLS {
+				_, _ = fmt.Fprintf(out, "   TLS:        enabled (auto-TLS)\n")
+			} else {
+				_, _ = fmt.Fprintf(out, "   TLS:        disabled\n")
+			}
 			_, _ = fmt.Fprintf(out, "   Admin user: %s\n", flagAdmin)
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, "Start the server:")
-			_, _ = fmt.Fprintf(out, "   axon-server start --config %s\n", configPath)
+			_, _ = fmt.Fprintf(out, "   axon-server start\n")
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, "Join a node:")
+			if flagTLS {
+				_, _ = fmt.Fprintf(out, "   axon-agent config set tls_insecure true\n")
+			}
 			_, _ = fmt.Fprintf(out, "   axon-agent join <SERVER_IP>%s %s\n", flagListen, joinToken)
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, "Use CLI:")
 			_, _ = fmt.Fprintf(out, "   axon config set server <SERVER_IP>%s\n", flagListen)
-			_, _ = fmt.Fprintln(out, "   axon auth login")
+			if flagTLS {
+				_, _ = fmt.Fprintf(out, "   axon config set tls_insecure true\n")
+			}
+			_, _ = fmt.Fprintf(out, "   axon auth login -u %s -p <password>\n", flagAdmin)
 			return nil
 		},
 	}

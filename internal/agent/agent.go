@@ -2,17 +2,21 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	controlpb "github.com/garysng/axon/gen/proto/control"
 	"github.com/garysng/axon/pkg/config"
@@ -73,16 +77,60 @@ func (a *Agent) EnableDataPlane() {
 	a.dataPlane = true
 }
 
+// isPermanentAuthError returns true if the error indicates a permanent
+// authentication failure that will not resolve with retries.
+func isPermanentAuthError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	// Check for known permanent error patterns.
+	for _, pattern := range []string{
+		"invalid token",
+		"registration failed",
+		"Unauthenticated",
+		"PermissionDenied",
+		"token mismatch",
+	} {
+		if strings.Contains(msg, pattern) {
+			return true
+		}
+	}
+	// Check gRPC status codes.
+	if st, ok := status.FromError(err); ok {
+		switch st.Code() {
+		case codes.Unauthenticated, codes.PermissionDenied:
+			return true
+		}
+	}
+	return false
+}
+
 // Run connects to the server and enters the main control loop. It reconnects
 // with exponential backoff on connection failures. Run blocks until ctx is
-// cancelled.
+// cancelled. Permanent auth errors (invalid token, etc.) stop after 3 attempts.
 func (a *Agent) Run(ctx context.Context) error {
 	var attempt int
+	var authFailures int
+	const maxAuthFailures = 3
+
 	for {
 		err := a.runOnce(ctx)
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
+		if isPermanentAuthError(err) {
+			authFailures++
+			if authFailures >= maxAuthFailures {
+				log.Printf("agent: authentication failed %d times (%v) — server may have been re-initialized", authFailures, err)
+				log.Printf("agent: stopping. To re-enroll: rm -rf ~/.axon-agent && axon-agent join <server-addr> <token>")
+				return fmt.Errorf("permanent auth error after %d attempts: %w", authFailures, err)
+			}
+		} else {
+			authFailures = 0 // reset on transient errors
+		}
+
 		attempt++
 		delay := backoff(attempt)
 		log.Printf("agent: connection lost (%v), reconnecting in %s (attempt %d)", err, delay, attempt)
@@ -147,6 +195,7 @@ func (a *Agent) runOnce(ctx context.Context) error {
 }
 
 // dial creates a gRPC client connection to the configured server.
+// Transport priority: ca_cert (strict TLS) > tls_insecure (TLS skip-verify) > plaintext.
 func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 
@@ -157,6 +206,8 @@ func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 			return nil, fmt.Errorf("load CA cert %q: %w", a.cfg.CACert, err)
 		}
 		opts = append(opts, grpc.WithTransportCredentials(creds))
+	case a.cfg.TLSInsecure:
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true}))) //nolint:gosec
 	default:
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}

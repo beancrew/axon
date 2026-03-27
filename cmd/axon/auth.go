@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -17,7 +16,6 @@ import (
 	managementpb "github.com/garysng/axon/gen/proto/management"
 	"github.com/garysng/axon/pkg/config"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 func authCmd() *cobra.Command {
@@ -32,12 +30,16 @@ func authCmd() *cobra.Command {
 // ── auth login ─────────────────────────────────────────────────────────────
 
 func authLoginCmd() *cobra.Command {
-	var serverAddr string
+	var (
+		serverAddr string
+		flagUser   string
+		flagPass   string
+	)
 
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Authenticate with the Axon server",
-		Long:  "Prompts for username and password, then requests a JWT token from the server.",
+		Long:  "Authenticates with username and password, then saves a JWT token.\nUse -u and -p for non-interactive mode, or omit for interactive prompts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfgPath := config.DefaultCLIConfigPath()
 			cfg, err := config.LoadCLIConfig(cfgPath)
@@ -53,39 +55,36 @@ func authLoginCmd() *cobra.Command {
 				return fmt.Errorf("server address not configured; use --server flag or run: axon config set server <addr>")
 			}
 
-			// Prompt for username.
-			reader := bufio.NewReader(os.Stdin)
-			_, _ = fmt.Fprint(cmd.OutOrStdout(), "Username: ")
-			username, err := reader.ReadString('\n')
-			if err != nil {
-				return fmt.Errorf("read username: %w", err)
-			}
-			username = strings.TrimSpace(username)
+			username := flagUser
+			password := flagPass
 
-			// Prompt for password (hide input).
-			_, _ = fmt.Fprint(cmd.OutOrStdout(), "Password: ")
-			passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
-			_, _ = fmt.Fprintln(cmd.OutOrStdout()) // newline after hidden input
-			if err != nil {
-				return fmt.Errorf("read password: %w", err)
+			// Interactive prompts when flags are not provided.
+			if username == "" {
+				reader := bufio.NewReader(os.Stdin)
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), "Username: ")
+				username, err = reader.ReadString('\n')
+				if err != nil {
+					return fmt.Errorf("read username: %w", err)
+				}
+				username = strings.TrimSpace(username)
 			}
-			password := string(passwordBytes)
+			if password == "" {
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), "Password: ")
+				passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+				_, _ = fmt.Fprintln(cmd.OutOrStdout()) // newline after hidden input
+				if err != nil {
+					return fmt.Errorf("read password: %w", err)
+				}
+				password = string(passwordBytes)
+			}
 
 			// Connect without auth — Login RPC is unauthenticated.
-			// Use TLS with skip-verify by default (self-signed CA is the default server config).
-			var loginOpt grpc.DialOption
-			switch {
-			case cfg.CACert != "":
-				creds, err := credentials.NewClientTLSFromFile(cfg.CACert, "")
-				if err != nil {
-					return fmt.Errorf("load CA cert %q: %w", cfg.CACert, err)
-				}
-				loginOpt = grpc.WithTransportCredentials(creds)
-			default:
-				loginOpt = grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})) //nolint:gosec
+			transportOpt, err := cliTransport(cfg)
+			if err != nil {
+				return err
 			}
 
-			conn, err := grpc.NewClient(cfg.ServerAddr, loginOpt)
+			conn, err := grpc.NewClient(cfg.ServerAddr, transportOpt)
 			if err != nil {
 				return fmt.Errorf("connect to server %q: %w", cfg.ServerAddr, err)
 			}
@@ -117,6 +116,8 @@ func authLoginCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&serverAddr, "server", "", "server address (saved to config)")
+	cmd.Flags().StringVarP(&flagUser, "username", "u", "", "username (non-interactive)")
+	cmd.Flags().StringVarP(&flagPass, "password", "p", "", "password (non-interactive)")
 	return cmd
 }
 
