@@ -265,7 +265,7 @@ func runDaemon() error {
 
 // handleDaemonConn processes a single request-response cycle on the unix socket.
 func handleDaemonConn(conn net.Conn, fm *forwardManager) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	dec := json.NewDecoder(conn)
 	enc := json.NewEncoder(conn)

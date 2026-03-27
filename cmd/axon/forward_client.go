@@ -68,7 +68,7 @@ func sendDaemonRequest(req daemonRequest) (*daemonResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect to daemon: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	enc := json.NewEncoder(conn)
 	dec := json.NewDecoder(conn)
@@ -94,7 +94,7 @@ func ensureDaemon() error {
 	// Check if already running.
 	conn, err := net.DialTimeout("unix", sockPath, time.Second)
 	if err == nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func ensureDaemon() error {
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}
-	defer logFile.Close()
+	defer func() { _ = logFile.Close() }()
 
 	// Re-exec self as daemon, detached from current session.
 	exe, err := os.Executable()
@@ -140,7 +140,7 @@ func ensureDaemon() error {
 		time.Sleep(100 * time.Millisecond)
 		c, err := net.DialTimeout("unix", sockPath, time.Second)
 		if err == nil {
-			c.Close()
+			_ = c.Close()
 			return nil
 		}
 	}
