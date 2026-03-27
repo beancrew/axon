@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -22,6 +23,7 @@ var version = "dev"
 
 func main() {
 	if err := rootCmd().Execute(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
@@ -33,7 +35,7 @@ func rootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(startCmd(), initCmd(), versionCmd())
+	root.AddCommand(startCmd(), initCmd(), versionCmd(), statusCmd())
 	return root
 }
 
@@ -46,6 +48,14 @@ func startCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start the Axon server",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if configPath == "" {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					return fmt.Errorf("get home dir: %w", err)
+				}
+				configPath = filepath.Join(home, ".axon-server", "config.yaml")
+			}
+
 			cfg, err := loadServerConfig(configPath)
 			if err != nil {
 				return fmt.Errorf("load config: %w", err)
@@ -55,7 +65,8 @@ func startCmd() *cobra.Command {
 				syscall.SIGINT, syscall.SIGTERM)
 			defer cancel()
 
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "axon-server %s starting on %s\n", version, cfg.ListenAddr)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "axon-server %s listening on %s (pid %d)\n",
+				version, cfg.ListenAddr, os.Getpid())
 
 			srv := server.NewServer(*cfg)
 			if err := srv.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -65,7 +76,7 @@ func startCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&configPath, "config", "./config.yaml", "config file path")
+	cmd.Flags().StringVar(&configPath, "config", "", "config file path (default: ~/.axon-server/config.yaml)")
 	return cmd
 }
 
