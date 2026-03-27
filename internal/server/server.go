@@ -36,9 +36,8 @@ type ServerConfig struct {
 	JWTSecret         string
 	HeartbeatInterval time.Duration
 	HeartbeatTimeout  time.Duration
-	AuditDBPath       string           // SQLite path for audit log; empty defaults to ":memory:"
-	DataDBPath        string           // SQLite path for registry/token/user stores; empty defaults to ":memory:"
-	Users             []auth.UserEntry // bootstrap users loaded from config YAML
+	AuditDBPath       string // SQLite path for audit log; empty defaults to ":memory:"
+	DataDBPath        string // SQLite path for registry/token/user stores; empty defaults to ":memory:"
 }
 
 // Server wraps a gRPC server with its dependencies.
@@ -48,7 +47,6 @@ type Server struct {
 	registry     *registry.Registry
 	control      *ControlService
 	auditWriter  *audit.Writer
-	userStore    *auth.UserStore
 	tokenStore   *auth.TokenStore
 	tokenChecker *auth.TokenChecker
 	dataDB       *sql.DB // shared database; closed last in GracefulStop
@@ -108,19 +106,6 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 		return fmt.Errorf("server: init token checker: %w", err)
 	}
 	s.tokenChecker = tokenChecker
-
-	// Initialize user store and bootstrap config users.
-	userStore, err := auth.NewUserStoreFromDB(db)
-	if err != nil {
-		return fmt.Errorf("server: init user store: %w", err)
-	}
-	s.userStore = userStore
-	// Bootstrap: seed config-defined users into the DB (skip if already present).
-	// NOTE: At least one bootstrap user in config is required for a fresh DB,
-	// since user management RPCs require authentication.
-	for i := range s.cfg.Users {
-		_, _ = userStore.InsertIfAbsent(&s.cfg.Users[i])
-	}
 
 	// Initialize join token store.
 	joinTokenStore, err := auth.NewJoinTokenStoreFromDB(db)
@@ -188,7 +173,7 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	bridge := newTaskBridge()
 	ops := newOperationsService(router, s.control, bridge, s.auditWriter)
 	agentOps := newAgentOpsService(bridge)
-	mgmt := newManagementService(s.registry, s.userStore, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker, joinTokenStore, effectiveTLSDir, s.cfg.HeartbeatInterval)
+	mgmt := newManagementService(s.registry, s.cfg.JWTSecret, s.tokenStore, s.tokenChecker, joinTokenStore, effectiveTLSDir, s.cfg.HeartbeatInterval)
 
 	controlpb.RegisterControlServiceServer(s.grpc, s.control)
 	operationspb.RegisterOperationsServiceServer(s.grpc, ops)
@@ -218,9 +203,6 @@ func (s *Server) GracefulStop() {
 	}
 	if s.auditWriter != nil {
 		_ = s.auditWriter.Close()
-	}
-	if s.userStore != nil {
-		_ = s.userStore.Close()
 	}
 	if s.tokenStore != nil {
 		_ = s.tokenStore.Close()
@@ -257,20 +239,19 @@ func (s *Server) buildServerOptions(checker *auth.TokenChecker) ([]grpc.ServerOp
 		opts = append(opts, grpc.Creds(creds))
 	}
 
-	// The ControlService/Connect stream handles its own token validation, and
-	// ManagementService/Login is the unauthenticated entry point. All other
-	// methods require a valid JWT (with revocation check when checker != nil).
+	// All methods require a valid JWT, except JoinAgent (unauthenticated enrolment)
+	// and ControlService/Connect (validates its own token internally).
 	opts = append(opts,
-		grpc.ChainUnaryInterceptor(skipLoginUnaryInterceptor(s.cfg.JWTSecret, checker)),
+		grpc.ChainUnaryInterceptor(skipJoinAgentUnaryInterceptor(s.cfg.JWTSecret, checker)),
 		grpc.ChainStreamInterceptor(skipConnectStreamInterceptor(s.cfg.JWTSecret, checker)),
 	)
 
 	return opts, nil
 }
 
-// skipLoginUnaryInterceptor wraps auth.UnaryInterceptorWithChecker but bypasses
-// JWT auth for ManagementService/Login (which is the unauthenticated login endpoint).
-func skipLoginUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.UnaryServerInterceptor {
+// skipJoinAgentUnaryInterceptor wraps auth.UnaryInterceptorWithChecker but bypasses
+// JWT auth for ManagementService/JoinAgent (the unauthenticated agent enrolment endpoint).
+func skipJoinAgentUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.UnaryServerInterceptor {
 	inner := auth.UnaryInterceptorWithChecker(secret, checker)
 	return func(
 		ctx context.Context,
@@ -278,8 +259,8 @@ func skipLoginUnaryInterceptor(secret string, checker *auth.TokenChecker) grpc.U
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		if info.FullMethod == managementpb.ManagementService_Login_FullMethodName ||
-			info.FullMethod == managementpb.ManagementService_JoinAgent_FullMethodName {
+		if info.FullMethod == managementpb.ManagementService_JoinAgent_FullMethodName ||
+			info.FullMethod == managementpb.ManagementService_Login_FullMethodName {
 			return handler(ctx, req)
 		}
 		return inner(ctx, req, info, handler)

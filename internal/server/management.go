@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -26,7 +25,6 @@ import (
 type ManagementService struct {
 	managementpb.UnimplementedManagementServiceServer
 	reg               *registry.Registry
-	userStore         *auth.UserStore
 	secret            string
 	tokenStore        *auth.TokenStore
 	tokenChecker      *auth.TokenChecker
@@ -37,10 +35,9 @@ type ManagementService struct {
 
 var _ managementpb.ManagementServiceServer = (*ManagementService)(nil)
 
-func newManagementService(reg *registry.Registry, userStore *auth.UserStore, secret string, tokenStore *auth.TokenStore, tokenChecker *auth.TokenChecker, joinTokenStore *auth.JoinTokenStore, tlsDir string, heartbeatInterval time.Duration) *ManagementService {
+func newManagementService(reg *registry.Registry, secret string, tokenStore *auth.TokenStore, tokenChecker *auth.TokenChecker, joinTokenStore *auth.JoinTokenStore, tlsDir string, heartbeatInterval time.Duration) *ManagementService {
 	return &ManagementService{
 		reg:               reg,
-		userStore:         userStore,
 		secret:            secret,
 		tokenStore:        tokenStore,
 		tokenChecker:      tokenChecker,
@@ -84,138 +81,29 @@ func (s *ManagementService) RemoveNode(_ context.Context, req *managementpb.Remo
 	return &managementpb.RemoveNodeResponse{Success: true}, nil
 }
 
-// Login validates credentials and issues a CLI JWT token.
-// This method skips JWT auth in the interceptor chain (see server.go).
-func (s *ManagementService) Login(_ context.Context, req *managementpb.LoginRequest) (*managementpb.LoginResponse, error) {
-	if s.userStore == nil {
-		return &managementpb.LoginResponse{Error: "user store not available"}, nil
-	}
-	u, err := s.userStore.Get(req.GetUsername())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "management: lookup user: %v", err)
-	}
-	if u == nil || u.Disabled {
-		return &managementpb.LoginResponse{Error: "invalid credentials"}, nil
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.GetPassword())); err != nil {
-		// Don't reveal whether the username was found.
-		return &managementpb.LoginResponse{Error: "invalid credentials"}, nil
-	}
-	const tokenExpiry = 24 * time.Hour
-	now := time.Now()
-	tok, jti, err := auth.SignCLIToken(s.secret, u.Username, u.NodeIDs, tokenExpiry)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "management: sign token: %v", err)
-	}
-	// Persist the issued token so it can be listed and revoked.
-	if s.tokenStore != nil {
-		_ = s.tokenStore.Insert(&auth.TokenEntry{
-			ID:        jti,
-			Kind:      string(auth.KindCLI),
-			UserID:    u.Username,
-			NodeIDs:   u.NodeIDs,
-			IssuedAt:  now.Unix(),
-			ExpiresAt: now.Add(tokenExpiry).Unix(),
-		})
-	}
-	log.Printf("server: user %q logged in", req.GetUsername())
-
-	return &managementpb.LoginResponse{
-		Token:     tok,
-		ExpiresAt: now.Add(tokenExpiry).Unix(),
-	}, nil
+// Login is no longer supported; authentication is done via pre-issued tokens.
+func (s *ManagementService) Login(_ context.Context, _ *managementpb.LoginRequest) (*managementpb.LoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Login is not supported; use a pre-issued token")
 }
 
-// CreateUser creates a new CLI user in the user store.
-// TODO(P2-5): Add authorization check — only admin users should manage other users.
-// TODO(P2-4): Log warning if TLS is not configured (password sent in plaintext).
-func (s *ManagementService) CreateUser(_ context.Context, req *managementpb.CreateUserRequest) (*managementpb.CreateUserResponse, error) {
-	if s.userStore == nil {
-		return &managementpb.CreateUserResponse{Error: "user store not available"}, nil
-	}
-	if req.GetUsername() == "" {
-		return &managementpb.CreateUserResponse{Error: "username is required"}, nil
-	}
-	if req.GetPassword() == "" {
-		return &managementpb.CreateUserResponse{Error: "password is required"}, nil
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.GetPassword()), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "management: hash password: %v", err)
-	}
-	nodeIDs := req.GetNodeIds()
-	if len(nodeIDs) == 0 {
-		nodeIDs = []string{"*"}
-	}
-	if err := s.userStore.Insert(&auth.UserEntry{
-		Username:     req.GetUsername(),
-		PasswordHash: string(hash),
-		NodeIDs:      nodeIDs,
-	}); err != nil {
-		return &managementpb.CreateUserResponse{Error: err.Error()}, nil
-	}
-	return &managementpb.CreateUserResponse{Success: true}, nil
+// CreateUser is no longer supported.
+func (s *ManagementService) CreateUser(_ context.Context, _ *managementpb.CreateUserRequest) (*managementpb.CreateUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "user management is not supported")
 }
 
-// UpdateUser updates an existing CLI user's password and/or node IDs.
-// TODO(P2-5): Add authorization check — only admin users should manage other users.
-// TODO(P2-4): Log warning if TLS is not configured (password sent in plaintext).
-// TODO: Add disable/enable user support via a dedicated flag or RPC.
-func (s *ManagementService) UpdateUser(_ context.Context, req *managementpb.UpdateUserRequest) (*managementpb.UpdateUserResponse, error) {
-	if s.userStore == nil {
-		return &managementpb.UpdateUserResponse{Error: "user store not available"}, nil
-	}
-	if req.GetUsername() == "" {
-		return &managementpb.UpdateUserResponse{Error: "username is required"}, nil
-	}
-	var passwordHash string
-	if req.GetPassword() != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.GetPassword()), bcrypt.DefaultCost)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "management: hash password: %v", err)
-		}
-		passwordHash = string(hash)
-	}
-	if err := s.userStore.Update(req.GetUsername(), passwordHash, req.GetNodeIds()); err != nil {
-		return &managementpb.UpdateUserResponse{Error: err.Error()}, nil
-	}
-	return &managementpb.UpdateUserResponse{Success: true}, nil
+// UpdateUser is no longer supported.
+func (s *ManagementService) UpdateUser(_ context.Context, _ *managementpb.UpdateUserRequest) (*managementpb.UpdateUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "user management is not supported")
 }
 
-// DeleteUser removes a CLI user from the user store.
-func (s *ManagementService) DeleteUser(_ context.Context, req *managementpb.DeleteUserRequest) (*managementpb.DeleteUserResponse, error) {
-	if s.userStore == nil {
-		return &managementpb.DeleteUserResponse{Error: "user store not available"}, nil
-	}
-	if req.GetUsername() == "" {
-		return &managementpb.DeleteUserResponse{Error: "username is required"}, nil
-	}
-	if err := s.userStore.Delete(req.GetUsername()); err != nil {
-		return &managementpb.DeleteUserResponse{Error: err.Error()}, nil
-	}
-	return &managementpb.DeleteUserResponse{Success: true}, nil
+// DeleteUser is no longer supported.
+func (s *ManagementService) DeleteUser(_ context.Context, _ *managementpb.DeleteUserRequest) (*managementpb.DeleteUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "user management is not supported")
 }
 
-// ListUsers returns all CLI users from the user store.
+// ListUsers is no longer supported.
 func (s *ManagementService) ListUsers(_ context.Context, _ *managementpb.ListUsersRequest) (*managementpb.ListUsersResponse, error) {
-	if s.userStore == nil {
-		return &managementpb.ListUsersResponse{}, nil
-	}
-	entries, err := s.userStore.List()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "management: list users: %v", err)
-	}
-	users := make([]*managementpb.UserInfo, 0, len(entries))
-	for _, e := range entries {
-		users = append(users, &managementpb.UserInfo{
-			Username:  e.Username,
-			NodeIds:   e.NodeIDs,
-			CreatedAt: e.CreatedAt,
-			UpdatedAt: e.UpdatedAt,
-			Disabled:  e.Disabled,
-		})
-	}
-	return &managementpb.ListUsersResponse{Users: users}, nil
+	return nil, status.Error(codes.Unimplemented, "user management is not supported")
 }
 
 // entryToSummary converts a registry.NodeEntry to a managementpb.NodeSummary.
@@ -319,7 +207,7 @@ func (s *ManagementService) JoinAgent(_ context.Context, req *managementpb.JoinA
 	}
 
 	// Sign a long-lived agent JWT.
-	const agentTokenExpiry = 365 * 24 * time.Hour
+	const agentTokenExpiry = 0 // no expiry — tokens are revocable
 	now := time.Now()
 	tok, jti, err := auth.SignAgentToken(s.secret, nodeID, agentTokenExpiry)
 	if err != nil {
@@ -336,7 +224,7 @@ func (s *ManagementService) JoinAgent(_ context.Context, req *managementpb.JoinA
 			Kind:      string(auth.KindAgent),
 			NodeIDs:   []string{nodeID},
 			IssuedAt:  now.Unix(),
-			ExpiresAt: now.Add(agentTokenExpiry).Unix(),
+			ExpiresAt: 0, // no expiry
 		}); err != nil {
 			log.Printf("management: persist agent token: %v", err)
 		}

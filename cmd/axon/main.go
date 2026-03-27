@@ -39,8 +39,6 @@ func rootCmd() *cobra.Command {
 		versionCmd(),
 		configCmd(),
 		nodeCmd(),
-		authCmd(),
-		userCmd(),
 		tokenCmd(),
 		execCmd(),
 		readCmd(),

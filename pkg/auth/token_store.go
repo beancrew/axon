@@ -122,12 +122,12 @@ func (s *TokenStore) List(kind string) ([]*TokenEntry, error) {
 	)
 	if kind == "" {
 		rows, err = s.db.Query(
-			`SELECT id, kind, user_id, node_ids, issued_at, expires_at FROM tokens WHERE revoked_at IS NULL AND expires_at > ? ORDER BY issued_at DESC`,
+			`SELECT id, kind, user_id, node_ids, issued_at, expires_at FROM tokens WHERE revoked_at IS NULL AND (expires_at = 0 OR expires_at > ?) ORDER BY issued_at DESC`,
 			now,
 		)
 	} else {
 		rows, err = s.db.Query(
-			`SELECT id, kind, user_id, node_ids, issued_at, expires_at FROM tokens WHERE revoked_at IS NULL AND expires_at > ? AND kind=? ORDER BY issued_at DESC`,
+			`SELECT id, kind, user_id, node_ids, issued_at, expires_at FROM tokens WHERE revoked_at IS NULL AND (expires_at = 0 OR expires_at > ?) AND kind=? ORDER BY issued_at DESC`,
 			now, kind,
 		)
 	}
@@ -156,7 +156,7 @@ func (s *TokenStore) List(kind string) ([]*TokenEntry, error) {
 // revoked tokens are excluded to avoid unbounded memory growth.
 func (s *TokenStore) LoadRevoked() ([]string, error) {
 	now := time.Now().Unix()
-	rows, err := s.db.Query(`SELECT id FROM tokens WHERE revoked_at IS NOT NULL AND expires_at > ?`, now)
+	rows, err := s.db.Query(`SELECT id FROM tokens WHERE revoked_at IS NOT NULL AND (expires_at = 0 OR expires_at > ?)`, now)
 	if err != nil {
 		return nil, fmt.Errorf("auth: load revoked tokens: %w", err)
 	}
