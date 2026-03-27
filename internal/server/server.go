@@ -184,9 +184,22 @@ func (s *Server) serve(ctx context.Context, lis net.Listener) error {
 	s.registry.StartMonitor(ctx)
 
 	// Stop the gRPC server when the context is cancelled.
+	// GracefulStop waits for all RPCs to finish, but long-lived bidi streams
+	// (e.g. Control.Connect) may never end. Fall back to Stop after 5s.
 	go func() {
 		<-ctx.Done()
-		s.grpc.GracefulStop()
+		done := make(chan struct{})
+		go func() {
+			s.grpc.GracefulStop()
+			close(done)
+		}()
+		select {
+		case <-done:
+			log.Println("server: graceful shutdown complete")
+		case <-time.After(5 * time.Second):
+			log.Println("server: graceful shutdown timed out, forcing stop")
+			s.grpc.Stop()
+		}
 	}()
 
 	if err := s.grpc.Serve(lis); err != nil {
