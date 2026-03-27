@@ -124,10 +124,9 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 	}
 
 	agentCfg := config.AgentConfig{
-		ServerAddr:  "passthrough://bufnet",
-		Token:       agentToken,
-		NodeName:    opts.agentNodeName,
-		TLSInsecure: true,
+		ServerAddr: "passthrough://bufnet",
+		Token:      agentToken,
+		NodeName:   opts.agentNodeName,
 	}
 
 	agt := agent.NewAgent(agentCfg, "")
@@ -281,7 +280,6 @@ func (h *Harness) ConnectAgent(name string) (*agent.Agent, string) {
 		ServerAddr:  "passthrough://bufnet",
 		Token:       agentToken,
 		NodeName:    name,
-		TLSInsecure: true,
 	}
 
 	agt := agent.NewAgent(agentCfg, "")
@@ -311,7 +309,6 @@ func (h *Harness) ConnectAgentWithToken(name, token string) (*agent.Agent, strin
 		ServerAddr:  "passthrough://bufnet",
 		Token:       token,
 		NodeName:    name,
-		TLSInsecure: true,
 	}
 
 	agt := agent.NewAgent(agentCfg, "")
@@ -343,7 +340,6 @@ func (h *Harness) ConnectAgentWithHandler(name string, handler agent.TaskHandler
 		ServerAddr:  "passthrough://bufnet",
 		Token:       agentToken,
 		NodeName:    name,
-		TLSInsecure: true,
 	}
 
 	agt := agent.NewAgent(agentCfg, "")
