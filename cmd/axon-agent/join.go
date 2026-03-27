@@ -149,11 +149,9 @@ For non-TLS servers (default), no extra config is needed.`,
 			_, _ = fmt.Fprintf(out, "   Server:     %s\n", serverAddr)
 			_, _ = fmt.Fprintf(out, "   Config:     %s\n", cfgPath)
 			_, _ = fmt.Fprintln(out)
-			_, _ = fmt.Fprintln(out, "Starting agent... (Ctrl+C to stop)")
-			_, _ = fmt.Fprintln(out)
-
-			// Start the agent control-plane loop in the foreground.
-			return runForeground(cfg, cfgPath)
+			_, _ = fmt.Fprintln(out, "Start the agent:")
+			_, _ = fmt.Fprintln(out, "   axon-agent start")
+			return nil
 		},
 	}
 
