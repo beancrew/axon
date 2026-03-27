@@ -78,6 +78,7 @@ case "$COMPONENT" in
     agent)
         echo "Next steps:"
         echo "  axon-agent join <server-addr> <join-token>"
+        echo "  axon-agent start"
         ;;
     cli)
         echo "Next steps:"

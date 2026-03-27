@@ -194,11 +194,28 @@ func (a *Agent) runOnce(ctx context.Context) error {
 	return a.controlLoop(ctx, stream, interval)
 }
 
+// tokenAuth implements credentials.PerRPCCredentials, attaching the agent JWT
+// as "authorization: Bearer <token>" metadata on every RPC.
+type tokenAuth struct {
+	token    string
+	insecure bool // allow sending on non-TLS connections
+}
+
+func (t tokenAuth) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
+	return map[string]string{"authorization": "bearer " + t.token}, nil
+}
+
+func (t tokenAuth) RequireTransportSecurity() bool {
+	return !t.insecure
+}
+
 // dial creates a gRPC client connection to the configured server.
 // Transport priority: ca_cert (strict TLS) > tls_insecure (TLS skip-verify) > plaintext.
+// The agent JWT token is attached to all RPCs via PerRPCCredentials.
 func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 
+	transportInsecure := false
 	switch {
 	case a.cfg.CACert != "":
 		creds, err := credentials.NewClientTLSFromFile(a.cfg.CACert, "")
@@ -210,6 +227,15 @@ func (a *Agent) dial(ctx context.Context) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true}))) //nolint:gosec
 	default:
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		transportInsecure = true
+	}
+
+	// Attach agent JWT to all RPCs (required for data plane operations).
+	if a.cfg.Token != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(tokenAuth{
+			token:    a.cfg.Token,
+			insecure: transportInsecure,
+		}))
 	}
 
 	if a.dialOverride != nil {
