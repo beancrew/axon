@@ -61,7 +61,8 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 		}
 	}
 
-	errCh := make(chan error, 2)
+	upErrCh := make(chan error, 1)
+	downErrCh := make(chan error, 1)
 
 	// Agent → Server (up): read from Agent stream, put on slot.up.
 	// Close slot.up when Agent finishes sending (EOF) so the CLI relay detects completion.
@@ -70,20 +71,20 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
-				errCh <- nil
+				upErrCh <- nil
 				return
 			}
 			if err != nil {
-				errCh <- err
+				upErrCh <- err
 				return
 			}
 			select {
 			case slot.up <- msg:
 			case <-slot.done:
-				errCh <- nil
+				upErrCh <- nil
 				return
 			case <-ctx.Done():
-				errCh <- ctx.Err()
+				upErrCh <- ctx.Err()
 				return
 			}
 		}
@@ -95,26 +96,43 @@ func (s *AgentOpsServiceImpl) HandleTask(stream grpc.BidiStreamingServer[operati
 			select {
 			case msg, ok := <-slot.down:
 				if !ok {
-					// CLI done sending (channel closed).
-					errCh <- nil
+					// CLI done sending (channel closed). This is normal for
+					// write ops — Agent still needs to process and respond.
+					downErrCh <- nil
 					return
 				}
 				if err := stream.Send(msg); err != nil {
-					errCh <- err
+					downErrCh <- err
 					return
 				}
 			case <-slot.done:
-				errCh <- nil
+				downErrCh <- nil
 				return
 			case <-ctx.Done():
-				errCh <- ctx.Err()
+				downErrCh <- ctx.Err()
 				return
 			}
 		}
 	}()
 
-	// Wait for the first goroutine to finish, then cancel the other.
-	err = <-errCh
-	cancel()
-	return err
+	// Wait for both goroutines. The "down" goroutine finishing (CLI done sending)
+	// is normal and must NOT cause early termination — the Agent may still need to
+	// send its response via the "up" goroutine (e.g. WriteResponse after processing).
+	// Only a real error from either side triggers early cancellation.
+	var firstErr error
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-upErrCh:
+			if err != nil && firstErr == nil {
+				firstErr = err
+				cancel() // cancel the other goroutine
+			}
+		case err := <-downErrCh:
+			if err != nil && firstErr == nil {
+				firstErr = err
+				cancel() // cancel the other goroutine
+			}
+		}
+	}
+	return firstErr
 }
