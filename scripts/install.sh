@@ -7,7 +7,7 @@
 set -e
 
 COMPONENT="${1:-cli}"
-REPO="garysng/axon"
+REPO="beancrew/axon"
 INSTALL_DIR="/usr/local/bin"
 
 # Detect OS
@@ -53,16 +53,15 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-# Download and extract
-TARBALL="${BINARY}-${OS}-${ARCH}.tar.gz"
-URL="https://github.com/${REPO}/releases/download/${VERSION}/${TARBALL}"
+# Download binary
+ASSET="${BINARY}-${OS}-${ARCH}"
+URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
 
 echo "Downloading ${BINARY} ${VERSION} for ${OS}/${ARCH}..."
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
-curl -fsSL "$URL" -o "$TMPDIR/$TARBALL"
-tar xzf "$TMPDIR/$TARBALL" -C "$TMPDIR"
+curl -fsSL "$URL" -o "$TMPDIR/${BINARY}"
 install -m 755 "$TMPDIR/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 
 echo ""
