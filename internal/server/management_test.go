@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	grpcstatus "google.golang.org/grpc/status"
 
 	controlpb "github.com/garysng/axon/gen/proto/control"
 	managementpb "github.com/garysng/axon/gen/proto/management"
@@ -25,7 +26,7 @@ type fullTestEnv struct {
 	cancel context.CancelFunc
 }
 
-func newFullTestEnv(t *testing.T, users []auth.UserEntry) *fullTestEnv {
+func newFullTestEnv(t *testing.T) *fullTestEnv {
 	t.Helper()
 
 	cfg := ServerConfig{
@@ -33,7 +34,6 @@ func newFullTestEnv(t *testing.T, users []auth.UserEntry) *fullTestEnv {
 		HeartbeatInterval: 30 * time.Second,
 		HeartbeatTimeout:  5 * time.Minute,
 		AuditDBPath:       ":memory:",
-		Users:             users,
 	}
 
 	srv := NewServer(cfg)
@@ -82,15 +82,6 @@ func authedCtx(t *testing.T, userID string, nodeIDs []string) context.Context {
 	}
 	md := metadata.Pairs("authorization", "Bearer "+tok)
 	return metadata.NewOutgoingContext(context.Background(), md)
-}
-
-func hashPassword(t *testing.T, plain string) string {
-	t.Helper()
-	h, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.MinCost)
-	if err != nil {
-		t.Fatalf("bcrypt: %v", err)
-	}
-	return string(h)
 }
 
 // connectAgent registers a mock agent and returns the assigned nodeID.
@@ -145,7 +136,7 @@ func connectAgent(t *testing.T, env *fullTestEnv, nodeName string) string {
 // ── Management Tests ───────────────────────────────────────────────────────
 
 func TestManagement_ListNodes_Empty(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -159,7 +150,7 @@ func TestManagement_ListNodes_Empty(t *testing.T) {
 }
 
 func TestManagement_ListNodes_WithAgent(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	nodeID := connectAgent(t, env, "web-1")
@@ -184,7 +175,7 @@ func TestManagement_ListNodes_WithAgent(t *testing.T) {
 }
 
 func TestManagement_GetNode(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	nodeID := connectAgent(t, env, "db-1")
@@ -203,7 +194,7 @@ func TestManagement_GetNode(t *testing.T) {
 }
 
 func TestManagement_GetNode_ByName(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	connectAgent(t, env, "named-node")
@@ -219,7 +210,7 @@ func TestManagement_GetNode_ByName(t *testing.T) {
 }
 
 func TestManagement_GetNode_NotFound(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -230,7 +221,7 @@ func TestManagement_GetNode_NotFound(t *testing.T) {
 }
 
 func TestManagement_RemoveNode(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	nodeID := connectAgent(t, env, "rm-node")
@@ -252,7 +243,7 @@ func TestManagement_RemoveNode(t *testing.T) {
 }
 
 func TestManagement_RemoveNode_NotFound(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -265,81 +256,22 @@ func TestManagement_RemoveNode_NotFound(t *testing.T) {
 	}
 }
 
-func TestManagement_Login_Success(t *testing.T) {
-	users := []auth.UserEntry{
-		{Username: "gary", PasswordHash: hashPassword(t, "secret123"), NodeIDs: []string{"*"}},
-	}
-	env := newFullTestEnv(t, users)
+func TestManagement_Login_Unimplemented(t *testing.T) {
+	env := newFullTestEnv(t)
 	mc := managementpb.NewManagementServiceClient(env.conn)
 
-	// Login does not require auth header.
-	resp, err := mc.Login(context.Background(), &managementpb.LoginRequest{
-		Username: "gary",
-		Password: "secret123",
-	})
-	if err != nil {
-		t.Fatalf("Login: %v", err)
-	}
-	if resp.Token == "" {
-		t.Error("expected non-empty token")
-	}
-	if resp.Error != "" {
-		t.Errorf("unexpected error: %s", resp.Error)
-	}
-	if resp.ExpiresAt == 0 {
-		t.Error("expected non-zero ExpiresAt")
-	}
-
-	// Validate the issued token grants wildcard access.
-	claims, err := auth.ValidateToken(testSecret, resp.Token)
-	if err != nil {
-		t.Fatalf("ValidateToken: %v", err)
-	}
-	if claims.UserID != "gary" {
-		t.Errorf("UserID = %q, want %q", claims.UserID, "gary")
-	}
-	if !auth.HasNodeAccess(claims, "any-node") {
-		t.Error("expected wildcard access")
-	}
-}
-
-func TestManagement_Login_InvalidPassword(t *testing.T) {
-	users := []auth.UserEntry{
-		{Username: "gary", PasswordHash: hashPassword(t, "correct"), NodeIDs: []string{"*"}},
-	}
-	env := newFullTestEnv(t, users)
-	mc := managementpb.NewManagementServiceClient(env.conn)
-
-	resp, err := mc.Login(context.Background(), &managementpb.LoginRequest{
-		Username: "gary",
-		Password: "wrong",
-	})
-	if err != nil {
-		t.Fatalf("Login: %v", err)
-	}
-	if resp.Token != "" {
-		t.Error("expected empty token for invalid password")
-	}
-	if resp.Error == "" {
-		t.Error("expected error message")
-	}
-}
-
-func TestManagement_Login_UnknownUser(t *testing.T) {
-	env := newFullTestEnv(t, nil)
-	mc := managementpb.NewManagementServiceClient(env.conn)
-
-	resp, err := mc.Login(context.Background(), &managementpb.LoginRequest{
-		Username: "nobody",
+	_, err := mc.Login(context.Background(), &managementpb.LoginRequest{
+		Username: "admin",
 		Password: "pass",
 	})
-	if err != nil {
-		t.Fatalf("Login: %v", err)
+	if err == nil {
+		t.Fatal("expected error from Login")
 	}
-	if resp.Token != "" {
-		t.Error("expected empty token")
+	st, ok := grpcstatus.FromError(err)
+	if !ok {
+		t.Fatalf("expected gRPC status error, got %v", err)
 	}
-	if resp.Error == "" {
-		t.Error("expected error message")
+	if st.Code() != codes.Unimplemented {
+		t.Errorf("expected Unimplemented, got %v", st.Code())
 	}
 }

@@ -78,9 +78,6 @@ audit:
 	if cfg.HeartbeatTimeout != 45*time.Second {
 		t.Errorf("HeartbeatTimeout = %v", cfg.HeartbeatTimeout)
 	}
-	if len(cfg.Users) != 1 || cfg.Users[0].Username != "admin" {
-		t.Errorf("Users = %+v", cfg.Users)
-	}
 	if cfg.AuditDBPath != "/tmp/audit.db" {
 		t.Errorf("AuditDBPath = %q", cfg.AuditDBPath)
 	}

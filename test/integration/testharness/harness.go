@@ -43,7 +43,6 @@ type harnessOpts struct {
 	heartbeatInterval time.Duration
 	heartbeatTimeout  time.Duration
 	agentNodeName     string
-	users             []auth.UserEntry
 }
 
 func defaultOpts() harnessOpts {
@@ -78,11 +77,6 @@ func WithAgentNodeName(name string) HarnessOption {
 	return func(o *harnessOpts) { o.agentNodeName = name }
 }
 
-// WithUsers sets the CLI user credentials for Login tests.
-func WithUsers(users []auth.UserEntry) HarnessOption {
-	return func(o *harnessOpts) { o.users = users }
-}
-
 // NewHarness creates a new integration test harness. It starts the server and
 // connects an agent, blocking until the agent appears in the registry.
 func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
@@ -99,7 +93,6 @@ func NewHarness(t *testing.T, options ...HarnessOption) *Harness {
 		JWTSecret:         opts.jwtSecret,
 		HeartbeatInterval: opts.heartbeatInterval,
 		HeartbeatTimeout:  opts.heartbeatTimeout,
-		Users:             opts.users,
 	}
 	srv := server.NewServer(srvCfg)
 
@@ -173,7 +166,6 @@ func NewHarnessServerOnly(t *testing.T, options ...HarnessOption) *Harness {
 		JWTSecret:         opts.jwtSecret,
 		HeartbeatInterval: opts.heartbeatInterval,
 		HeartbeatTimeout:  opts.heartbeatTimeout,
-		Users:             opts.users,
 	}
 	srv := server.NewServer(srvCfg)
 

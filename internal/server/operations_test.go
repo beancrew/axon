@@ -13,7 +13,7 @@ import (
 // TestOperations_Exec_NodeNotFound verifies that Exec returns NotFound for
 // a non-existent node.
 func TestOperations_Exec_NodeNotFound(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 
 	oc := operationspb.NewOperationsServiceClient(env.conn)
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -41,7 +41,7 @@ func TestOperations_Exec_NodeNotFound(t *testing.T) {
 
 // TestOperations_Exec_PermissionDenied verifies access control.
 func TestOperations_Exec_PermissionDenied(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 	connectAgent(t, env, "restricted-node")
 
 	oc := operationspb.NewOperationsServiceClient(env.conn)
@@ -71,7 +71,7 @@ func TestOperations_Exec_PermissionDenied(t *testing.T) {
 // TestOperations_Write_NoHeader verifies that Write returns an error when
 // the first message is not a WriteHeader.
 func TestOperations_Write_NoHeader(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 
 	oc := operationspb.NewOperationsServiceClient(env.conn)
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -98,7 +98,7 @@ func TestOperations_Write_NoHeader(t *testing.T) {
 // TestOperations_Forward_NoTunnelOpen verifies that Forward returns an error
 // when the first message has no TunnelOpen.
 func TestOperations_Forward_NoTunnelOpen(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 
 	oc := operationspb.NewOperationsServiceClient(env.conn)
 	ctx := authedCtx(t, "admin", []string{"*"})
@@ -123,7 +123,7 @@ func TestOperations_Forward_NoTunnelOpen(t *testing.T) {
 
 // TestOperations_Unauthenticated verifies that requests without auth are rejected.
 func TestOperations_Unauthenticated(t *testing.T) {
-	env := newFullTestEnv(t, nil)
+	env := newFullTestEnv(t)
 
 	oc := operationspb.NewOperationsServiceClient(env.conn)
 

@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -13,7 +12,6 @@ import (
 	managementpb "github.com/garysng/axon/gen/proto/management"
 	operationspb "github.com/garysng/axon/gen/proto/operations"
 	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/auth"
 	"github.com/garysng/axon/test/integration/testharness"
 )
 
@@ -201,25 +199,8 @@ func TestIntegration_RemoveNode(t *testing.T) {
 
 // ── Login tests ────────────────────────────────────────────────────────────
 
-func hashPassword(t *testing.T, password string) string {
-	t.Helper()
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
-	if err != nil {
-		t.Fatalf("bcrypt hash: %v", err)
-	}
-	return string(hash)
-}
-
-func TestIntegration_Login(t *testing.T) {
-	users := []auth.UserEntry{
-		{
-			Username:     "admin",
-			PasswordHash: hashPassword(t, "secret123"),
-			NodeIDs:      []string{"*"},
-		},
-	}
-
-	h := testharness.NewHarnessServerOnly(t, testharness.WithUsers(users))
+func TestIntegration_LoginUnimplemented(t *testing.T) {
+	h := testharness.NewHarnessServerOnly(t)
 
 	conn := h.UnauthConn()
 	client := managementpb.NewManagementServiceClient(conn)
@@ -227,50 +208,15 @@ func TestIntegration_Login(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	resp, err := client.Login(ctx, &managementpb.LoginRequest{
+	_, err := client.Login(ctx, &managementpb.LoginRequest{
 		Username: "admin",
-		Password: "secret123",
+		Password: "secret",
 	})
-	if err != nil {
-		t.Fatalf("Login: %v", err)
+	if err == nil {
+		t.Fatal("expected error from Login, got nil")
 	}
-	if resp.GetToken() == "" {
-		t.Errorf("expected non-empty token, got error: %s", resp.GetError())
-	}
-	if resp.GetExpiresAt() == 0 {
-		t.Error("expected non-zero ExpiresAt")
-	}
-}
-
-func TestIntegration_LoginInvalidCredentials(t *testing.T) {
-	users := []auth.UserEntry{
-		{
-			Username:     "admin",
-			PasswordHash: hashPassword(t, "secret123"),
-			NodeIDs:      []string{"*"},
-		},
-	}
-
-	h := testharness.NewHarnessServerOnly(t, testharness.WithUsers(users))
-
-	conn := h.UnauthConn()
-	client := managementpb.NewManagementServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	resp, err := client.Login(ctx, &managementpb.LoginRequest{
-		Username: "admin",
-		Password: "wrongpassword",
-	})
-	if err != nil {
-		t.Fatalf("Login: %v", err)
-	}
-	if resp.GetToken() != "" {
-		t.Error("expected empty token for invalid credentials")
-	}
-	if resp.GetError() == "" {
-		t.Error("expected non-empty error message for invalid credentials")
+	if code := status.Code(err); code != codes.Unimplemented {
+		t.Errorf("expected codes.Unimplemented, got %v", code)
 	}
 }
 

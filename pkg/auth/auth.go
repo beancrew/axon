@@ -29,19 +29,23 @@ type Claims struct {
 
 // SignCLIToken creates a signed JWT for a CLI client that can access the given
 // nodes. It returns the token string, the JTI (JWT ID) used as the unique
-// token identifier, and any error.
+// token identifier, and any error. Pass expiry=0 for a non-expiring token.
 func SignCLIToken(secret, userID string, nodeIDs []string, expiry time.Duration) (string, string, error) {
 	now := time.Now()
 	jti := uuid.NewString()
+	rc := jwt.RegisteredClaims{
+		ID:       jti,
+		IssuedAt: jwt.NewNumericDate(now),
+	}
+	if expiry != 0 {
+		rc.ExpiresAt = jwt.NewNumericDate(now.Add(expiry))
+	}
+	// expiry == 0 means no expiration (token valid until revoked).
 	claims := Claims{
 		UserID:  userID,
 		NodeIDs: nodeIDs,
 		Kind:    KindCLI,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        jti,
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
-		},
+		RegisteredClaims: rc,
 	}
 	tok, err := signToken(secret, claims)
 	return tok, jti, err
@@ -52,14 +56,18 @@ func SignCLIToken(secret, userID string, nodeIDs []string, expiry time.Duration)
 func SignAgentToken(secret, nodeID string, expiry time.Duration) (string, string, error) {
 	now := time.Now()
 	jti := uuid.NewString()
+	rc := jwt.RegisteredClaims{
+		ID:       jti,
+		IssuedAt: jwt.NewNumericDate(now),
+	}
+	if expiry != 0 {
+		rc.ExpiresAt = jwt.NewNumericDate(now.Add(expiry))
+	}
+	// expiry == 0 means no expiration (token valid until revoked).
 	claims := Claims{
-		NodeID: nodeID,
-		Kind:   KindAgent,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        jti,
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
-		},
+		NodeID:           nodeID,
+		Kind:             KindAgent,
+		RegisteredClaims: rc,
 	}
 	tok, err := signToken(secret, claims)
 	return tok, jti, err

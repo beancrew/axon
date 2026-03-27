@@ -16,7 +16,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/garysng/axon/internal/server"
-	"github.com/garysng/axon/pkg/auth"
 )
 
 var version = "dev"
@@ -99,14 +98,13 @@ type fileConfig struct {
 	Listen    string          `yaml:"listen"`
 	TLS       tlsConfig       `yaml:"tls"`
 	Auth      authConfig      `yaml:"auth"`
-	Users     []userConfig    `yaml:"users"`
 	Heartbeat heartbeatConfig `yaml:"heartbeat"`
 	Audit     auditConfig     `yaml:"audit"`
 	Data      dataConfig      `yaml:"data"`
 }
 
 type tlsConfig struct {
-	Auto *bool  `yaml:"auto"`  // pointer to distinguish unset from explicit false
+	Auto *bool  `yaml:"auto"` // pointer to distinguish unset from explicit false
 	Dir  string `yaml:"dir"`
 	Cert string `yaml:"cert"`
 	Key  string `yaml:"key"`
@@ -114,13 +112,6 @@ type tlsConfig struct {
 
 type authConfig struct {
 	JWTSigningKey string `yaml:"jwt_signing_key"`
-	TokenExpiry   string `yaml:"token_expiry"`
-}
-
-type userConfig struct {
-	Username     string   `yaml:"username"`
-	PasswordHash string   `yaml:"password_hash"`
-	NodeIDs      []string `yaml:"node_ids"`
 }
 
 type heartbeatConfig struct {
@@ -163,15 +154,6 @@ func loadServerConfig(path string) (*server.ServerConfig, error) {
 		return nil, fmt.Errorf("heartbeat.timeout: %w", err)
 	}
 
-	users := make([]auth.UserEntry, len(fc.Users))
-	for i, u := range fc.Users {
-		users[i] = auth.UserEntry{
-			Username:     u.Username,
-			PasswordHash: u.PasswordHash,
-			NodeIDs:      u.NodeIDs,
-		}
-	}
-
 	// TLS is disabled by default. Enable only when tls.auto is explicitly true,
 	// or when tls.cert + tls.key are provided.
 	tlsAuto := fc.TLS.Auto != nil && *fc.TLS.Auto
@@ -187,7 +169,6 @@ func loadServerConfig(path string) (*server.ServerConfig, error) {
 		HeartbeatTimeout:  hbTimeout,
 		AuditDBPath:       fc.Audit.DBPath,
 		DataDBPath:        fc.Data.DBPath,
-		Users:             users,
 	}
 
 	return cfg, nil

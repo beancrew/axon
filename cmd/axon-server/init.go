@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -11,9 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
 
 	"github.com/garysng/axon/pkg/auth"
@@ -22,18 +19,16 @@ import (
 
 func initCmd() *cobra.Command {
 	var (
-		flagListen   string
-		flagAdmin    string
-		flagPassword string
-		flagDataDir  string
-		flagTLS      bool
-		flagForce    bool
+		flagListen  string
+		flagDataDir string
+		flagTLS     bool
+		flagForce   bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize server configuration",
-		Long:  "Creates a server config file and an initial join token. Does not start the server.",
+		Long:  "Creates a server config file, signs an admin token, and generates an initial join token. Does not start the server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if flagDataDir == "" {
 				home, err := os.UserHomeDir()
@@ -46,23 +41,7 @@ func initCmd() *cobra.Command {
 			configPath := filepath.Join(flagDataDir, "config.yaml")
 
 			if _, err := os.Stat(configPath); err == nil && !flagForce {
-				return fmt.Errorf("config already exists at %s\nTo regenerate, use --force. To manage tokens after starting the server, use the CLI: axon token list", configPath)
-			}
-
-			if flagAdmin == "" {
-				return fmt.Errorf("--admin must not be empty")
-			}
-
-			// Prompt for password interactively if not provided via flag.
-			if flagPassword == "" {
-				_, _ = fmt.Fprint(cmd.OutOrStdout(), "Admin password: ")
-				scanner := bufio.NewScanner(os.Stdin)
-				if scanner.Scan() {
-					flagPassword = scanner.Text()
-				}
-				if flagPassword == "" {
-					return fmt.Errorf("password is required")
-				}
+				return fmt.Errorf("config already exists at %s\nTo regenerate, use --force. To list tokens, run: axon token list", configPath)
 			}
 
 			// Generate 32-byte random JWT secret (64 hex chars).
@@ -71,13 +50,6 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("generate JWT secret: %w", err)
 			}
 			jwtSecret := hex.EncodeToString(secretBuf)
-
-			// Bcrypt-hash the admin password.
-			hashBytes, err := bcrypt.GenerateFromPassword([]byte(flagPassword), bcrypt.DefaultCost)
-			if err != nil {
-				return fmt.Errorf("hash password: %w", err)
-			}
-			passwordHash := string(hashBytes)
 
 			// Generate join token: "axon-join-" + 64 random hex chars.
 			tokenBuf := make([]byte, 32)
@@ -91,7 +63,7 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("create data dir %q: %w", flagDataDir, err)
 			}
 
-			// Open SQLite database and initialise the join token store.
+			// Open SQLite database and initialise the join token and CLI token stores.
 			dbPath := filepath.Join(flagDataDir, "axon.db")
 			if flagForce {
 				// Remove the existing DB so we start with a clean state.
@@ -108,28 +80,50 @@ func initCmd() *cobra.Command {
 				return fmt.Errorf("set WAL: %w", err)
 			}
 
-			store, err := auth.NewJoinTokenStoreFromDB(db)
+			joinStore, err := auth.NewJoinTokenStoreFromDB(db)
 			if err != nil {
 				return fmt.Errorf("init join token store: %w", err)
 			}
 
+			tokenStore, err := auth.NewTokenStoreFromDB(db)
+			if err != nil {
+				return fmt.Errorf("init token store: %w", err)
+			}
+
 			// Hash and persist the join token.
 			sum := sha256.Sum256([]byte(joinToken))
-			tokenHash := hex.EncodeToString(sum[:])
+			joinTokenHash := hex.EncodeToString(sum[:])
 
-			// Short 8-char hex ID for display/management.
 			idBytes := make([]byte, 4)
 			if _, err := rand.Read(idBytes); err != nil {
-				return fmt.Errorf("generate token ID: %w", err)
+				return fmt.Errorf("generate join token ID: %w", err)
 			}
-			tokenID := hex.EncodeToString(idBytes)
+			joinTokenID := hex.EncodeToString(idBytes)
 
-			if err := store.Insert(&auth.JoinTokenEntry{
-				ID:        tokenID,
-				TokenHash: tokenHash,
+			if err := joinStore.Insert(&auth.JoinTokenEntry{
+				ID:        joinTokenID,
+				TokenHash: joinTokenHash,
 				CreatedAt: time.Now().Unix(),
 			}); err != nil {
 				return fmt.Errorf("insert join token: %w", err)
+			}
+
+			// Sign a no-expiry admin CLI token.
+			adminToken, adminJTI, err := auth.SignCLIToken(jwtSecret, "admin", []string{"*"}, 0)
+			if err != nil {
+				return fmt.Errorf("sign admin token: %w", err)
+			}
+
+			// Persist the admin token so it can be listed and revoked.
+			if err := tokenStore.Insert(&auth.TokenEntry{
+				ID:       adminJTI,
+				Kind:     string(auth.KindCLI),
+				UserID:   "admin",
+				NodeIDs:  []string{"*"},
+				IssuedAt: time.Now().Unix(),
+				// ExpiresAt = 0 means no expiry
+			}); err != nil {
+				return fmt.Errorf("persist admin token: %w", err)
 			}
 
 			// Construct and write config.yaml.
@@ -138,13 +132,6 @@ func initCmd() *cobra.Command {
 				Listen: flagListen,
 				Auth: authConfig{
 					JWTSigningKey: jwtSecret,
-				},
-				Users: []userConfig{
-					{
-						Username:     flagAdmin,
-						PasswordHash: passwordHash,
-						NodeIDs:      []string{"*"},
-					},
 				},
 				Data: dataConfig{
 					DBPath: dbPath,
@@ -178,7 +165,9 @@ func initCmd() *cobra.Command {
 			} else {
 				_, _ = fmt.Fprintf(out, "   TLS:        disabled\n")
 			}
-			_, _ = fmt.Fprintf(out, "   Admin user: %s\n", flagAdmin)
+			_, _ = fmt.Fprintln(out)
+			_, _ = fmt.Fprintf(out, "   Admin token:  %s\n", adminToken)
+			_, _ = fmt.Fprintf(out, "   Join token:   %s\n", joinToken)
 			_, _ = fmt.Fprintln(out)
 			_, _ = fmt.Fprintln(out, "Start the server:")
 			_, _ = fmt.Fprintf(out, "   axon-server start\n")
@@ -194,14 +183,13 @@ func initCmd() *cobra.Command {
 			if flagTLS {
 				_, _ = fmt.Fprintf(out, "   axon config set tls_insecure true\n")
 			}
-			_, _ = fmt.Fprintf(out, "   axon auth login -u %s -p <password>\n", flagAdmin)
+			_, _ = fmt.Fprintf(out, "   axon config set token <admin-token>\n")
+			_, _ = fmt.Fprintf(out, "   axon node list\n")
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&flagListen, "listen", ":9090", "listen address")
-	cmd.Flags().StringVar(&flagAdmin, "admin", "admin", "admin username")
-	cmd.Flags().StringVar(&flagPassword, "password", "", "admin password (prompted if omitted)")
 	cmd.Flags().StringVar(&flagDataDir, "data-dir", "", "data directory (default: ~/.axon-server)")
 	cmd.Flags().BoolVar(&flagTLS, "tls", false, "enable auto-TLS")
 	cmd.Flags().BoolVar(&flagForce, "force", false, "overwrite existing config")
