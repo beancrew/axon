@@ -72,7 +72,7 @@ echo ""
 case "$COMPONENT" in
     server)
         echo "Next steps:"
-        echo "  axon-server init --admin admin --password <pass>"
+        echo "  axon-server init"
         echo "  axon-server start"
         ;;
     agent)
