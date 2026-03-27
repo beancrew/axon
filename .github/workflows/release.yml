@@ -3,97 +3,40 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION_FILE: go.mod
 
 jobs:
-  test:
-    name: Test
+  release:
+    name: Build & Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.GO_VERSION_FILE }}
 
       - name: Run tests
-        run: go test ./...
+        run: go test ./... -race -cover
 
-      - name: Lint
-        run: make lint
+      - name: Build release binaries
+        run: make release
 
-  build:
-    name: Build
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Build binaries
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          set -e
-          LDFLAGS="-X main.version=${VERSION}"
-          BINARIES="axon axon-server axon-agent"
-          PLATFORMS="linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"
-
-          for BINARY in $BINARIES; do
-            for PLATFORM in $PLATFORMS; do
-              OS="${PLATFORM%/*}"
-              ARCH="${PLATFORM#*/}"
-              OUTFILE="${BINARY}-${OS}-${ARCH}"
-              echo "Building ${OUTFILE}..."
-              CGO_ENABLED=0 GOOS="${OS}" GOARCH="${ARCH}" \
-                go build -ldflags "${LDFLAGS}" -o "${OUTFILE}" "./cmd/${BINARY}"
-              tar czf "${OUTFILE}.tar.gz" "${OUTFILE}"
-              rm "${OUTFILE}"
-            done
-          done
-
-      - name: Generate SHA256SUMS
-        run: sha256sum ./*.tar.gz > SHA256SUMS
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-artifacts
-          path: |
-            *.tar.gz
-            SHA256SUMS
-
-  release:
-    name: Release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-artifacts
-
-      - name: Detect prerelease
-        id: prerelease
-        run: |
-          if echo "${{ github.ref_name }}" | grep -qE '(rc|beta)'; then
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            *.tar.gz
-            SHA256SUMS
           generate_release_notes: true
-          prerelease: ${{ steps.prerelease.outputs.is_prerelease == 'true' }}
+          files: |
+            dist/*
