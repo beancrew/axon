@@ -174,6 +174,7 @@ func (fm *forwardManager) acceptLoop(ctx context.Context, entry *forwardEntry, c
 			fm.mu.Lock()
 			if e, ok := fm.forwards[entry.ID]; ok {
 				e.Status = "failed"
+				_, _ = fmt.Fprintf(os.Stderr, "[forward daemon] forward %s accept failed: %v\n", entry.ID, err)
 			}
 			fm.mu.Unlock()
 			return

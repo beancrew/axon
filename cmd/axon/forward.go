@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -67,7 +68,11 @@ func forwardListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			forwards, err := daemonList()
 			if err != nil {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), err.Error())
+				if errors.Is(err, errDaemonNotRunning) {
+					_, _ = fmt.Fprintln(cmd.OutOrStdout(), err.Error())
+				} else {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				}
 				return nil
 			}
 			if len(forwards) == 0 {
