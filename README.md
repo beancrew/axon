@@ -131,7 +131,7 @@ An [AgentSkill for Axon](skills/axon/) is included in this repo.
 - **Port forwarding** — Map remote ports to localhost, with daemon-managed multi-forward support
 - **Reverse connection** — Nodes connect outbound to server; no inbound ports, works behind NAT/firewalls
 - **Token-based auth** — JWT with JTI, revocation, and join-token enrollment for agents
-- **User management** — Create, list, update, delete users with per-node access control
+- **Token management** — List, revoke tokens and join tokens via CLI
 - **Auto-TLS** — Self-signed CA and server certificate generated automatically; BYO cert supported
 - **Audit logging** — Every operation recorded with timestamp, caller, node, and result
 - **Single-binary deployment** — One binary per component, cross-platform (Linux/macOS, amd64/arm64)
@@ -140,7 +140,7 @@ An [AgentSkill for Axon](skills/axon/) is included in this repo.
 ## Security
 
 - **Token-based auth** — JWT with unique JTI, revocation support
-- **User management** — Per-user node access control
+- **Token lifecycle** — List, revoke, and manage tokens via CLI
 - **Audit log** — Every operation logged with timestamp, caller, node, command, result
 - **No inbound ports on nodes** — Reverse connection only
 - **Auto-TLS** — Self-signed CA + server cert generated automatically; BYO cert supported

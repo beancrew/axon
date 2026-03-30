@@ -12,7 +12,7 @@ Get Axon running in under 5 minutes: a server, an agent, and your first remote c
 ## 1. Build
 
 ```bash
-git clone https://github.com/garysng/axon.git
+git clone https://github.com/beancrew/axon.git
 cd axon
 make build
 ```
@@ -27,10 +27,10 @@ This produces three binaries in `bin/`:
 
 ## 2. Initialize the Server
 
-One command sets up everything — config, JWT secret, admin user, and a join token:
+One command sets up everything — config, JWT secret, admin token, and a join token:
 
 ```bash
-./bin/axon-server init --admin admin --password your-secret-password
+./bin/axon-server init
 ```
 
 Output:
@@ -41,7 +41,9 @@ Server initialized
    Config:     ~/.axon-server/config.yaml
    Database:   ~/.axon-server/axon.db
    Listen:     :9090
-   Admin user: admin
+
+Admin token (save this):
+   eyJhbGciOiJIUzI1NiIs...
 
 Start the server:
    axon-server start --config ~/.axon-server/config.yaml
@@ -51,18 +53,16 @@ Join a node:
 
 Use CLI:
    axon config set server <SERVER_IP>:9090
-   axon auth login
+   axon config set token <admin-token>
 ```
 
-**Save the join token** — you'll need it to enroll agents.
+**Save the admin token and join token** — you'll need them to configure the CLI and enroll agents.
 
 ### `init` Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--listen` | `:9090` | gRPC listen address |
-| `--admin` | `admin` | Admin username |
-| `--password` | *(prompted)* | Admin password (interactive if omitted) |
 | `--data-dir` | `~/.axon-server` | Data directory for config, DB, and certs |
 | `--tls` | `false` | Enable auto-TLS (self-signed CA + server cert) |
 | `--force` | `false` | Overwrite existing config |
@@ -127,14 +127,14 @@ After the first join, reconnect with:
 
 The agent reads its saved config (`~/.axon-agent/config.yaml`) automatically.
 
-## 5. CLI Login
+## 5. Configure CLI
 
 ```bash
 # Point CLI at the server
 ./bin/axon config set server <SERVER_IP>:9090
 
-# Login (prompts for username/password)
-./bin/axon auth login
+# Set the admin token from init output
+./bin/axon config set token <admin-token>
 ```
 
 ## 6. Run Commands
@@ -153,9 +153,12 @@ axon read my-node /etc/hostname
 # Write a file
 echo "hello from axon" | axon write my-node /tmp/hello.txt
 
-# Port forward
-axon forward my-node 8080:80
-# Now localhost:8080 → my-node:80
+# Port forward (non-blocking)
+axon forward create my-node 8080:80
+# Forward f1a2b3c4 created: 127.0.0.1:8080 → my-node:80
+
+axon forward list
+axon forward delete f1a2b3c4
 ```
 
 ## 7. Manage Join Tokens

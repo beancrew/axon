@@ -59,9 +59,43 @@ echo "hello" | axon write web-1 /tmp/hello.txt
 
 参数：`--mode <perm>`（默认 0644）
 
-### `axon forward <node> <local-port>:<remote-port>`
+### `axon forward`
 
-端口转发。
+管理端口转发。支持子命令进行非阻塞、daemon 管理的转发。
+
+### `axon forward create <node> <local-port>:<remote-port>`
+
+创建端口转发（非阻塞，返回 forward ID）。自动启动后台 daemon。
+
+```bash
+axon forward create db-1 5432:5432
+# Forward f1a2b3c4 created: 127.0.0.1:5432 → db-1:5432
+```
+
+参数：`--bind <address>`（默认 127.0.0.1）
+
+### `axon forward list`
+
+列出活跃的端口转发。
+
+```bash
+axon forward list
+# ID        NODE     LOCAL  REMOTE  STATUS   CREATED
+# f1a2b3c4  db-1     5432   5432    active   2m ago
+```
+
+### `axon forward delete <forward-id>`
+
+删除端口转发。
+
+```bash
+axon forward delete f1a2b3c4
+# Forward f1a2b3c4 deleted
+```
+
+### `axon forward <node> <local-port>:<remote-port>`（简写）
+
+向后兼容的阻塞模式。
 
 ```bash
 axon forward db-1 5432:5432
@@ -72,33 +106,27 @@ axon forward db-1 5432:5432
 
 ---
 
-## 认证命令
+## Token 命令
 
-| 命令 | 说明 |
-|------|------|
-| `axon auth login` | 登录获取 JWT Token |
-| `axon auth token` | 显示当前 Token |
-| `axon auth list-tokens` | 列出所有已签发的 Token |
-| `axon auth revoke <id>` | 吊销指定 Token |
+### `axon token list`
 
----
+列出所有活跃的（未吊销）Token。
 
-## 用户命令
+```bash
+axon token list
+# 550e8400-...  cli     admin         expires=2026-03-26T10:00:00+08:00
+```
 
-| 命令 | 说明 |
-|------|------|
-| `axon user create <username>` | 创建用户（提示输入密码） |
-| `axon user list` | 列出所有用户 |
-| `axon user update <username>` | 更新用户的节点权限或密码 |
-| `axon user delete <username>` | 删除用户（有确认提示） |
+参数：`--kind <cli|agent>` — 按类型过滤
 
-`create` 参数：`--node-ids <ids>`（逗号分隔，默认 `*`）
-`update` 参数：`--node-ids <ids>`、`--password`
-`delete` 参数：`--force` / `-f`（跳过确认）
+### `axon token revoke <token-id>`
 
----
+吊销指定 Token。
 
-## Join Token 命令
+```bash
+axon token revoke 550e8400-e29b-41d4-a716-446655440000
+# Token revoked successfully.
+```
 
 ### `axon token create-join`
 
@@ -133,6 +161,7 @@ axon token revoke-join a1b2c3d4
 
 ```bash
 axon config set server axon.example.com:9090
+axon config set token <admin-token>
 axon config get server
 axon version
 ```
@@ -143,16 +172,14 @@ axon version
 
 ### `axon-server init`
 
-初始化 Server 配置。生成配置文件、JWT 密钥、管理员用户、SQLite 数据库和初始 join token。
+初始化 Server 配置。生成配置文件、JWT 密钥、admin token、SQLite 数据库和初始 join token。
 
 ```bash
-axon-server init --admin admin --password secret
+axon-server init
 ```
 
 参数：
 - `--listen <addr>` — gRPC 监听地址（默认：`:9090`）
-- `--admin <name>` — 管理员用户名（默认：`admin`）
-- `--password <pass>` — 管理员密码（不提供则交互输入）
 - `--data-dir <path>` — 数据目录（默认：`~/.axon-server`）
 - `--tls` — 启用自动 TLS
 - `--force` — 覆盖已有配置
@@ -213,17 +240,15 @@ axon-agent join 10.0.1.1:9090 axon-join-ab12cd34... --tls-insecure
 | `exec` | ✅ | server stream | ✅ |
 | `read` | ✅ | server stream | ✅ |
 | `write` | ✅ | client stream | ✅ |
-| `forward` | ✅ | bidi stream | ✅ |
-| `auth login` | ✅ | unary | ❌ |
-| `auth list-tokens` | ✅ | unary | ✅ |
-| `auth revoke` | ✅ | unary | ✅ |
+| `forward create` | ✅ | bidi stream | ✅ |
+| `forward list` | ❌ | — | — |
+| `forward delete` | ❌ | — | — |
+| `forward`（简写） | ✅ | bidi stream | ✅ |
+| `token list` | ✅ | unary | ✅ |
+| `token revoke` | ✅ | unary | ✅ |
 | `token create-join` | ✅ | unary | ✅ |
 | `token list-join` | ✅ | unary | ✅ |
 | `token revoke-join` | ✅ | unary | ✅ |
-| `user create` | ✅ | unary | ✅ |
-| `user list` | ✅ | unary | ✅ |
-| `user update` | ✅ | unary | ✅ |
-| `user delete` | ✅ | unary | ✅ |
 | `config set/get` | ❌ | — | — |
 | `version` | ❌ | — | — |
 
@@ -231,7 +256,7 @@ axon-agent join 10.0.1.1:9090 axon-join-ab12cd34... --tls-insecure
 
 | 命令 | 说明 |
 |------|------|
-| `init` | 初始化配置、数据库、管理员、join token |
+| `init` | 初始化配置、数据库、admin token、join token |
 | `start` | 启动 gRPC Server |
 | `version` | 显示版本 |
 

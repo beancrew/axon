@@ -130,9 +130,44 @@ Written 6 bytes to /tmp/hello.txt
 - **gRPC**: `OperationsService.Write` (client stream)
 - **Flags**: `--mode <perm>` — file permissions (default: 0644)
 
-### `axon forward <node> <local-port>:<remote-port>`
+### `axon forward`
 
-Forward a remote port to localhost.
+Manage port forwards to remote nodes. Supports subcommands for non-blocking, daemon-managed forwards.
+
+### `axon forward create <node> <local-port>:<remote-port>`
+
+Create a port forward (non-blocking, returns forward ID). Auto-starts a background daemon if not running.
+
+```
+$ axon forward create db-1 5432:5432
+Forward f1a2b3c4 created: 127.0.0.1:5432 → db-1:5432
+```
+
+- **Flags**: `--bind <address>` — bind address (default: `127.0.0.1`)
+
+### `axon forward list`
+
+List active port forwards.
+
+```
+$ axon forward list
+ID        NODE     LOCAL  REMOTE  STATUS   CREATED
+f1a2b3c4  db-1     5432   5432    active   2m ago
+d5e6f7a8  web-1    8080   80      active   5s ago
+```
+
+### `axon forward delete <forward-id>`
+
+Delete a port forward.
+
+```
+$ axon forward delete f1a2b3c4
+Forward f1a2b3c4 deleted
+```
+
+### `axon forward <node> <local-port>:<remote-port>` (shorthand)
+
+Backward-compatible blocking mode. Listens on a local port and forwards TCP connections to a remote port.
 
 ```
 $ axon forward db-1 5432:5432
@@ -147,118 +182,33 @@ Ready. Press Ctrl+C to stop.
 
 ## Auth Commands
 
-### `axon auth login`
+---
 
-Authenticate and obtain a JWT token.
+## Token Commands
 
-```
-$ axon auth login --server axon.example.com:9090
-Username: gary
-Password: ****
-Login successful. Token saved.
-```
+### `axon token list`
 
-- **gRPC**: `ManagementService.Login` (unary, no auth required)
-- **Flags**: `--server <address>` — server address (saved to config)
-
-### `axon auth token`
-
-Display the current token.
+List all active (non-revoked) tokens.
 
 ```
-$ axon auth token
-eyJhbGciOiJIUzI1NiIs...
-```
-
-### `axon auth list-tokens`
-
-List all issued tokens.
-
-```
-$ axon auth list-tokens
-ID                                    KIND   USER    ISSUED              EXPIRES
-550e8400-e29b-41d4-a716-446655440000  cli    gary    2026-03-25 10:00    2026-03-26 10:00
+$ axon token list
+550e8400-e29b-41d4-a716-446655440000  cli     admin         expires=2026-03-26T10:00:00+08:00
+a1b2c3d4-0000-0000-0000-000000000000  agent   web-1         expires=never
 ```
 
 - **gRPC**: `ManagementService.ListTokens` (unary)
+- **Flags**: `--kind <cli|agent>` — filter by token kind
 
-### `axon auth revoke <token-id>`
+### `axon token revoke <token-id>`
 
 Revoke a token by its JTI.
 
 ```
-$ axon auth revoke 550e8400-e29b-41d4-a716-446655440000
-Token revoked.
+$ axon token revoke 550e8400-e29b-41d4-a716-446655440000
+Token revoked successfully.
 ```
 
 - **gRPC**: `ManagementService.RevokeToken` (unary)
-
-### `axon auth rotate`
-
-*Not yet implemented.* Placeholder for revoke current + re-login.
-
----
-
-## User Commands
-
-### `axon user create <username>`
-
-Create a new CLI user. Prompts for password.
-
-```
-$ axon user create deploy-bot --node-ids web-1,web-2
-Password: ****
-User "deploy-bot" created.
-```
-
-- **gRPC**: `ManagementService.CreateUser` (unary)
-- **Flags**: `--node-ids <ids>` — comma-separated allowed node IDs (default: `*`)
-
-### `axon user list`
-
-List all users.
-
-```
-$ axon user list
-USERNAME      NODE IDS      DISABLED   CREATED
-admin         *             no         2026-03-25 09:00:00
-deploy-bot    web-1,web-2   no         2026-03-25 10:30:00
-```
-
-- **gRPC**: `ManagementService.ListUsers` (unary)
-
-### `axon user update <username>`
-
-Update a user's node IDs or password.
-
-```
-$ axon user update deploy-bot --node-ids web-1,web-2,db-1
-User "deploy-bot" updated.
-
-$ axon user update deploy-bot --password
-New password: ****
-User "deploy-bot" updated.
-```
-
-- **gRPC**: `ManagementService.UpdateUser` (unary)
-- **Flags**: `--node-ids <ids>`; `--password` — prompt for new password
-
-### `axon user delete <username>`
-
-Delete a user. Prompts for confirmation.
-
-```
-$ axon user delete deploy-bot
-Are you sure you want to delete user "deploy-bot"? (y/N): y
-User "deploy-bot" deleted.
-```
-
-- **gRPC**: `ManagementService.DeleteUser` (unary)
-- **Flags**: `--force` / `-f` — skip confirmation
-
----
-
-## Join Token Commands
 
 ### `axon token create-join`
 
@@ -335,16 +285,18 @@ axon 0.1.0 (go1.25, darwin/arm64)
 
 ### `axon-server init`
 
-Initialize server configuration. Creates config file, JWT secret, admin user, SQLite database, and an initial join token.
+Initialize server configuration. Creates config file, JWT secret, admin token, SQLite database, and an initial join token.
 
 ```
-$ axon-server init --admin admin --password secret
+$ axon-server init
 Server initialized
 
    Config:     ~/.axon-server/config.yaml
    Database:   ~/.axon-server/axon.db
    Listen:     :9090
-   Admin user: admin
+
+Admin token (save this):
+   eyJhbGciOiJIUzI1NiIs...
 
 Start the server:
    axon-server start --config ~/.axon-server/config.yaml
@@ -355,8 +307,6 @@ Join a node:
 
 - **Flags**:
   - `--listen <addr>` — gRPC listen address (default: `:9090`)
-  - `--admin <name>` — admin username (default: `admin`)
-  - `--password <pass>` — admin password (prompted if omitted)
   - `--data-dir <path>` — data directory (default: `~/.axon-server`)
   - `--tls` — enable auto-TLS
   - `--force` — overwrite existing config
@@ -443,18 +393,15 @@ axon-agent 0.1.0 (go1.25, darwin/arm64)
 | `exec` | ✅ | server stream | ✅ |
 | `read` | ✅ | server stream | ✅ |
 | `write` | ✅ | client stream | ✅ |
-| `forward` | ✅ | bidi stream | ✅ |
-| `auth login` | ✅ | unary | ❌ |
-| `auth token` | ❌ | — | — |
-| `auth list-tokens` | ✅ | unary | ✅ |
-| `auth revoke` | ✅ | unary | ✅ |
+| `forward create` | ✅ | bidi stream | ✅ |
+| `forward list` | ❌ | — | — |
+| `forward delete` | ❌ | — | — |
+| `forward` (shorthand) | ✅ | bidi stream | ✅ |
+| `token list` | ✅ | unary | ✅ |
+| `token revoke` | ✅ | unary | ✅ |
 | `token create-join` | ✅ | unary | ✅ |
 | `token list-join` | ✅ | unary | ✅ |
 | `token revoke-join` | ✅ | unary | ✅ |
-| `user create` | ✅ | unary | ✅ |
-| `user list` | ✅ | unary | ✅ |
-| `user update` | ✅ | unary | ✅ |
-| `user delete` | ✅ | unary | ✅ |
 | `config set/get` | ❌ | — | — |
 | `version` | ❌ | — | — |
 
@@ -462,7 +409,7 @@ axon-agent 0.1.0 (go1.25, darwin/arm64)
 
 | Command | Description |
 |---------|-------------|
-| `init` | Initialize config, DB, admin user, join token |
+| `init` | Initialize config, DB, admin token, join token |
 | `start` | Start the gRPC server |
 | `version` | Show version |
 

@@ -131,7 +131,7 @@ exec("axon exec web-1 'systemctl reload nginx'")
 - **端口转发** — 远程端口映射到本地，支持 daemon 管理多转发
 - **反向连接** — 节点主动外连 server，无需开入站端口，NAT/防火墙无障碍
 - **Token 认证** — JWT + JTI + 吊销，join-token 快速注册 agent
-- **用户管理** — 创建、列表、更新、删除用户，按节点粒度控制访问
+- **Token 管理** — 通过 CLI 列表、吊销 token 和 join token
 - **自动 TLS** — 自签 CA + 服务器证书自动生成，也支持自带证书
 - **审计日志** — 每个操作记录时间、调用者、节点和结果
 - **单二进制部署** — 每个组件一个二进制，跨平台（Linux/macOS，amd64/arm64）
@@ -140,7 +140,7 @@ exec("axon exec web-1 'systemctl reload nginx'")
 ## 安全
 
 - **Token 认证** — JWT + JTI + 吊销
-- **用户管理** — 按用户配置节点访问权限
+- **Token 生命周期** — 通过 CLI 管理 token
 - **审计日志** — 完整操作记录
 - **节点无入站端口** — 纯反向连接
 - **自动 TLS** — 自签 CA 自动生成，支持自带证书
