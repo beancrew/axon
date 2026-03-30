@@ -3,7 +3,7 @@
 package agent
 
 import (
-	controlpb "github.com/garysng/axon/gen/proto/control"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
 )
 
 func collectOSInfo() *controlpb.OSInfo {

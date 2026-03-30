@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/garysng/axon/pkg/auth"
+	"github.com/beancrew/axon/pkg/auth"
 	_ "modernc.org/sqlite"
 )
 

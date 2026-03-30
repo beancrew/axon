@@ -15,9 +15,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	"github.com/garysng/axon/internal/agent"
-	"github.com/garysng/axon/pkg/config"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	"github.com/beancrew/axon/internal/agent"
+	"github.com/beancrew/axon/pkg/config"
 )
 
 func joinCmd() *cobra.Command {

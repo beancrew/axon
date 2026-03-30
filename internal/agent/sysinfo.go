@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"time"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
 )
 
 // version is set at build time via -ldflags.

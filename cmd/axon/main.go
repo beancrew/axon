@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/garysng/axon/pkg/config"
-	"github.com/garysng/axon/pkg/display"
+	"github.com/beancrew/axon/pkg/config"
+	"github.com/beancrew/axon/pkg/display"
 )
 
 // version is set at build time via -ldflags.

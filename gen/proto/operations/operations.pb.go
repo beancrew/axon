@@ -1115,7 +1115,7 @@ const file_operations_proto_rawDesc = "" +
 	"\aForward\x12\x1b.axon.operations.TunnelData\x1a\x1b.axon.operations.TunnelData(\x010\x012_\n" +
 	"\x0fAgentOpsService\x12L\n" +
 	"\n" +
-	"HandleTask\x12\x1b.axon.operations.TaskDataUp\x1a\x1d.axon.operations.TaskDataDown(\x010\x01B.Z,github.com/garysng/axon/gen/proto/operationsb\x06proto3"
+	"HandleTask\x12\x1b.axon.operations.TaskDataUp\x1a\x1d.axon.operations.TaskDataDown(\x010\x01B/Z-github.com/beancrew/axon/gen/proto/operationsb\x06proto3"
 
 var (
 	file_operations_proto_rawDescOnce sync.Once

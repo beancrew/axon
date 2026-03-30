@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/auth"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/auth"
 )
 
 // claimsCtx injects Claims into a context for testing.

@@ -1,7 +1,7 @@
 syntax = "proto3";
 package axon.management;
 
-option go_package = "github.com/garysng/axon/gen/proto/management";
+option go_package = "github.com/beancrew/axon/gen/proto/management";
 
 import "control.proto";
 

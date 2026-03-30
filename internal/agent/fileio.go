@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 const readChunkSize = 32 * 1024 // 32 KB

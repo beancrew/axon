@@ -761,7 +761,7 @@ const file_control_proto_rawDesc = "" +
 	"TASK_WRITE\x10\x02\x12\x10\n" +
 	"\fTASK_FORWARD\x10\x032X\n" +
 	"\x0eControlService\x12F\n" +
-	"\aConnect\x12\x1a.axon.control.AgentMessage\x1a\x1b.axon.control.ServerMessage(\x010\x01B+Z)github.com/garysng/axon/gen/proto/controlb\x06proto3"
+	"\aConnect\x12\x1a.axon.control.AgentMessage\x1a\x1b.axon.control.ServerMessage(\x010\x01B,Z*github.com/beancrew/axon/gen/proto/controlb\x06proto3"
 
 var (
 	file_control_proto_rawDescOnce sync.Once

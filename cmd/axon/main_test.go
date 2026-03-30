@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/garysng/axon/pkg/config"
+	"github.com/beancrew/axon/pkg/config"
 )
 
 func TestVersionCmd(t *testing.T) {

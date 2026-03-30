@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 // readCollector collects ReadOutput messages.

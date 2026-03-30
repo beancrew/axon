@@ -10,12 +10,12 @@ import (
 
 	_ "modernc.org/sqlite" // SQLite driver
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/audit"
-	"github.com/garysng/axon/pkg/auth"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/audit"
+	"github.com/beancrew/axon/pkg/auth"
 )
 
 // ServeListenerReady starts the server on lis and closes the ready channel

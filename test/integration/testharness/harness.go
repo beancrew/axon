@@ -13,12 +13,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	"github.com/garysng/axon/internal/agent"
-	"github.com/garysng/axon/internal/server"
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/auth"
-	"github.com/garysng/axon/pkg/config"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	"github.com/beancrew/axon/internal/agent"
+	"github.com/beancrew/axon/internal/server"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/auth"
+	"github.com/beancrew/axon/pkg/config"
 )
 
 const bufSize = 1024 * 1024

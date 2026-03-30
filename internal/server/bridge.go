@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 // taskBridge manages pending CLI requests waiting for agent data plane connections.

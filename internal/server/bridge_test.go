@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
 )
 
 func TestBridge_CreateAttachRemove(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 const daemonIdleTimeout = 60 * time.Second
