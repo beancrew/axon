@@ -137,13 +137,12 @@ exec("axon exec web-1 'systemctl reload nginx'")
 - **单二进制部署** — 每个组件一个二进制，跨平台（Linux/macOS，amd64/arm64）
 - **Server daemon 模式** — `--daemon` 后台运行，`axon-server stop` 停止
 
-## 安全
+## 安全模型
 
-- **Token 认证** — JWT + JTI + 吊销
-- **Token 生命周期** — 通过 CLI 管理 token
-- **审计日志** — 完整操作记录
-- **节点无入站端口** — 纯反向连接
-- **自动 TLS** — 自签 CA 自动生成，支持自带证书
+- **节点无入站端口** — Agent 仅外连，不开 SSH，不开端口
+- **Token 吊销** — 被泄露的 token 可通过 CLI 即时吊销
+- **专利保护** — Apache 2.0 许可证包含专利授权和报复条款
+- **完整审计链** — 谁、在哪台机器、什么时候、做了什么——全部记录
 
 ## 文档
 

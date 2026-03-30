@@ -137,13 +137,12 @@ An [AgentSkill for Axon](skills/axon/) is included in this repo.
 - **Single-binary deployment** — One binary per component, cross-platform (Linux/macOS, amd64/arm64)
 - **Server daemon mode** — Run server in background with `--daemon`, stop with `axon-server stop`
 
-## Security
+## Security Model
 
-- **Token-based auth** — JWT with unique JTI, revocation support
-- **Token lifecycle** — List, revoke, and manage tokens via CLI
-- **Audit log** — Every operation logged with timestamp, caller, node, command, result
-- **No inbound ports on nodes** — Reverse connection only
-- **Auto-TLS** — Self-signed CA + server cert generated automatically; BYO cert supported
+- **No inbound ports on nodes** — Agents connect outbound only; no SSH, no open ports
+- **Token revocation** — Compromised tokens can be revoked instantly via CLI
+- **Patent retaliation** — Apache 2.0 license includes patent grant with retaliation clause
+- **Full audit trail** — Who did what, on which node, when — every operation recorded
 
 ## Documentation
 
