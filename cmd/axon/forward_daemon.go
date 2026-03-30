@@ -289,5 +289,7 @@ func handleDaemonConn(conn net.Conn, fm *forwardManager) {
 		resp = &daemonResponse{OK: false, Message: fmt.Sprintf("unknown action: %s", req.Action)}
 	}
 
-	_ = enc.Encode(resp)
+	if err := enc.Encode(resp); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "[forward daemon] failed to write response: %v\n", err)
+	}
 }
