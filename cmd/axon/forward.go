@@ -67,7 +67,8 @@ func forwardListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			forwards, err := daemonList()
 			if err != nil {
-				return err
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), err.Error())
+				return nil
 			}
 			if len(forwards) == 0 {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No active forwards.")
@@ -100,8 +101,6 @@ func forwardDeleteCmd() *cobra.Command {
 }
 
 func forwardDaemonCmd() *cobra.Command {
-	var foreground bool
-
 	cmd := &cobra.Command{
 		Use:    "daemon",
 		Short:  "Start forward daemon (internal use)",
@@ -111,7 +110,9 @@ func forwardDaemonCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&foreground, "foreground", false, "run in foreground")
+	// --foreground is accepted for the re-exec convention (ensureDaemon passes it)
+	// but has no effect — the daemon always runs in foreground when invoked directly.
+	cmd.Flags().Bool("foreground", false, "run in foreground (accepted but no-op)")
 	return cmd
 }
 

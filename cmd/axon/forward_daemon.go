@@ -199,7 +199,9 @@ func (fm *forwardManager) close() {
 // randomHexID returns a random 8-character hex string.
 func randomHexID() string {
 	b := make([]byte, 4)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
+	}
 	return fmt.Sprintf("%x", b)
 }
 

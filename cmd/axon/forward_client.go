@@ -130,9 +130,7 @@ func ensureDaemon() error {
 		return fmt.Errorf("start daemon: %w", err)
 	}
 
-	// Write PID file as a convenience (daemon also writes it).
-	pidPath := filepath.Join(dir, "forward.pid")
-	_ = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", cmd.Process.Pid)), 0600)
+	// PID file is written by the daemon itself — no need to duplicate here.
 
 	// Wait up to 5 seconds for the daemon to be ready.
 	deadline := time.Now().Add(5 * time.Second)
@@ -169,12 +167,14 @@ func daemonCreate(node string, localPort, remotePort int, bindAddr string) (stri
 	return resp.ID, nil
 }
 
-// daemonList returns active forwards. Returns nil if the daemon is not running.
+// errDaemonNotRunning is returned when the daemon socket is unreachable.
+var errDaemonNotRunning = fmt.Errorf("forward daemon is not running (start one with 'axon forward create')")
+
+// daemonList returns active forwards. Returns errDaemonNotRunning if the daemon is not reachable.
 func daemonList() ([]forwardInfo, error) {
 	resp, err := sendDaemonRequest(daemonRequest{Action: "list"})
 	if err != nil {
-		// Daemon not running — treat as empty list.
-		return nil, nil
+		return nil, errDaemonNotRunning
 	}
 	if !resp.OK {
 		return nil, fmt.Errorf("%s", resp.Message)
