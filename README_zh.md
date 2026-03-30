@@ -40,63 +40,34 @@ AI Agent（任意框架）
 
 5. **Agent 原生，人也能用** — 为 agent 设计，但人也可以直接用来调试和排查。
 
-## 架构
+## 快速开始
 
-### 组件
+```bash
+# 安装（自动检测 OS/架构）
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- server
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 
-**Axon CLI** (`axon`)
-- Agent（和人）的操作接口
-- 通过 gRPC 与 Server 通信
-- 无状态——所有状态在 Server 端
+# 初始化 server
+axon-server init
 
-**Axon Server** (`axon-server`)
-- 中央控制面，用户自部署
-- 单二进制，最小配置
-- 管理节点注册、认证、路由
-- 审计日志：谁、在哪台机器、做了什么、什么时候
+# 加入节点
+axon-agent join <server-addr>:9090 <join-token>
 
-**Axon Agent** (`axon-agent`)
-- 每台目标机器上的轻量 daemon
-- 反向连接到 Server（不需要开入站端口）
-- 断线自动重连
-- 作为系统服务运行
-
-### 连接模型
-
-```
-axon-agent (节点) ──── 反向连接 ────→ axon-server ←──── gRPC ──── axon CLI
+# 使用
+axon exec my-node "hostname"
 ```
 
-节点**主动外连**到 Server，意味着：
-- 不需要暴露 SSH 端口
-- NAT 后面、防火墙后面、企业内网都能用
-- 边缘设备、云主机、本地服务器——全部一样
-
-### 节点生命周期
-
-```
-安装 axon-agent → 启动（指定 server 地址 + token）→ 自动注册 → 上线
-                                                                  │
-                                                    Agent 通过 CLI 操作
-                                                                  │
-                                               kill agent 或 axon node remove → 下线
-```
-
-没有仪式。Token 认证，启动即用。
+→ 完整指南：[Quick Start](docs/quickstart.md)
 
 ## CLI 参考
 
 ### 节点管理
 
 ```bash
-# 查看所有在线节点
-axon node list
-
-# 节点详情（OS、IP、在线时长、agent 版本）
-axon node info <node>
-
-# 移除节点
-axon node remove <node>
+axon node list                 # 查看所有在线节点
+axon node info <node>          # 节点详情
+axon node remove <node>        # 移除节点
 ```
 
 ### 核心操作
@@ -109,21 +80,22 @@ axon exec db-1 "pg_dump mydb > /tmp/backup.sql"
 
 # 读取远程文件
 axon read <node> <path>
-axon read web-1 /etc/nginx/nginx.conf
+axon read web-1 /etc/nginx/nginx.conf > local.conf
 
 # 写文件到远程节点（stdin）
-axon write <node> <path> < local-file.yaml
 echo "hello" | axon write web-1 /tmp/hello.txt
+cat config.yaml | axon write web-1 /etc/app/config.yaml
 
-# 端口转发（远程端口映射到本地）
-axon forward <node> <local-port>:<remote-port>
-axon forward db-1 5432:5432      # 本地访问远程 PostgreSQL
-axon forward web-1 8080:80       # 本地访问远程 HTTP
+# 端口转发
+axon forward create db-1 5432:5432    # 非阻塞，daemon 管理
+axon forward list                      # 列出活跃转发
+axon forward delete <id>               # 删除转发
+axon forward db-1 5432:5432           # 阻塞式简写
 ```
 
-### 就这些。
-
 4 个操作。其他一切都是这些的组合，由 skill 指导。
+
+→ 完整参考：[CLI Reference](docs/cli.md)
 
 ## Agent 如何使用 Axon
 
@@ -141,10 +113,6 @@ exec("axon exec web-1 'systemctl reload nginx'")
 
 ```markdown
 # skill: deploy-service
-## 工具
-- axon exec <node> <command>
-- axon write <node> <path>
-
 ## 步骤
 1. axon write <node> /opt/<service>/docker-compose.yaml
 2. axon exec <node> "cd /opt/<service> && docker compose pull"
@@ -154,40 +122,43 @@ exec("axon exec web-1 'systemctl reload nginx'")
 
 不同场景？换个 skill。CLI 不变。
 
+本仓库包含一个 [Axon AgentSkill](skills/axon/)。
+
+## 功能特性
+
+- **远程执行** — 在任意节点运行命令，实时 stdout/stderr 流式输出
+- **文件操作** — 通过 stdin/stdout 读写远程文件
+- **端口转发** — 远程端口映射到本地，支持 daemon 管理多转发
+- **反向连接** — 节点主动外连 server，无需开入站端口，NAT/防火墙无障碍
+- **Token 认证** — JWT + JTI + 吊销，join-token 快速注册 agent
+- **用户管理** — 创建、列表、更新、删除用户，按节点粒度控制访问
+- **自动 TLS** — 自签 CA + 服务器证书自动生成，也支持自带证书
+- **审计日志** — 每个操作记录时间、调用者、节点和结果
+- **单二进制部署** — 每个组件一个二进制，跨平台（Linux/macOS，amd64/arm64）
+- **Server daemon 模式** — `--daemon` 后台运行，`axon-server stop` 停止
+
 ## 安全
 
-- **Token 认证** — Server 发 token，使用时出示 token
-- **审计日志** — 每个操作记录时间、调用者、节点、命令、结果
+- **Token 认证** — JWT + JTI + 吊销
+- **用户管理** — 按用户配置节点访问权限
+- **审计日志** — 完整操作记录
 - **节点无入站端口** — 纯反向连接
-- **全链路 TLS** — Server ↔ Agent，CLI ↔ Server
+- **自动 TLS** — 自签 CA 自动生成，支持自带证书
 
-## 路线图
+## 文档
 
-### Phase 1: 基础
-- [x] axon-server：gRPC 服务、节点注册、认证
-- [ ] axon-agent：反向连接、命令执行、文件读写
-- [ ] axon CLI：exec、read、write、forward、节点管理
-- [x] Token 认证
-- [x] 审计日志
+- [Quick Start Guide](docs/quickstart.md) — 5 分钟上手
+- [Configuration Reference](docs/configuration.md) — 所有配置选项
+- [Architecture Overview](docs/architecture.md) — 组件架构
+- [CLI Reference](docs/cli.md) — 完整命令参考
+- [Protocol Design](docs/protocol.md) — gRPC/protobuf 协议细节
+- [Server Design](docs/server.md) — Server 设计文档
+- [Agent Design](docs/agent.md) — Agent 设计文档
 
-### Phase 2: 生产加固
-- [ ] Agent 自动更新
-- [ ] 连接多路复用
-- [ ] 限流和资源配额
-- [ ] 多租户支持
+## 贡献
 
-### Phase 3: 生态
-- [ ] 插件系统（自定义节点能力）
-- [ ] Web 控制台（只读状态，给人看的）
-- [ ] 预置 skill 库
-
-## 技术栈
-
-- **语言**：Go
-- **通信**：全链路 gRPC over HTTP/2
-- **认证**：JWT Token（CLI Token 绑定用户 + 节点列表）
-- **构建**：每个组件单二进制，跨平台
+参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
 
-待定
+Apache License 2.0 — 参见 [LICENSE](LICENSE)。

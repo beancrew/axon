@@ -40,63 +40,34 @@ AI Agent (any framework)
 
 5. **Agent-native, human-friendly** — Designed for agents, but humans can use it too for debugging and inspection.
 
-## Architecture
+## Quick Start
 
-### Components
+```bash
+# Install (auto-detects OS/arch)
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- server
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 
-**Axon CLI** (`axon`)
-- The interface for agents (and humans)
-- Talks to Axon Server via gRPC
-- Stateless — all state lives on the server
+# Initialize server
+axon-server init
 
-**Axon Server** (`axon-server`)
-- Central control plane, user self-hosted
-- Single binary, minimal config
-- Manages node registration, authentication, routing
-- Audit log: who did what, on which node, when
+# Join a node
+axon-agent join <server-addr>:9090 <join-token>
 
-**Axon Agent** (`axon-agent`)
-- Lightweight daemon on each target machine
-- Reverse connection to server (no inbound ports needed)
-- Auto-reconnect on network failure
-- Runs as a system service
-
-### Connection Model
-
-```
-axon-agent (node) ──── reverse connect ────→ axon-server ←──── gRPC ──── axon CLI
+# Use it
+axon exec my-node "hostname"
 ```
 
-Nodes connect **outbound** to the server. This means:
-- No SSH ports to expose
-- Works behind NAT, firewalls, corporate networks
-- Edge devices, cloud VMs, on-prem servers — all the same
-
-### Node Lifecycle
-
-```
-Install axon-agent → Start with server URL + token → Auto-register → Online
-                                                                       │
-                                                          Agent operates via CLI
-                                                                       │
-                                                    Kill agent or `axon node remove` → Gone
-```
-
-No ceremony. No approval flow. Token-based auth, start and go.
+→ Full guide: [Quick Start](docs/quickstart.md)
 
 ## CLI Reference
 
 ### Node Management
 
 ```bash
-# List all connected nodes
-axon node list
-
-# Node details (OS, IP, uptime, agent version)
-axon node info <node>
-
-# Remove a node
-axon node remove <node>
+axon node list                 # List all connected nodes
+axon node info <node>          # Node details
+axon node remove <node>        # Remove a node
 ```
 
 ### Core Operations
@@ -109,21 +80,22 @@ axon exec db-1 "pg_dump mydb > /tmp/backup.sql"
 
 # Read a file from a remote node
 axon read <node> <path>
-axon read web-1 /etc/nginx/nginx.conf
+axon read web-1 /etc/nginx/nginx.conf > local.conf
 
 # Write a file to a remote node (stdin)
-axon write <node> <path> < local-file.yaml
 echo "hello" | axon write web-1 /tmp/hello.txt
+cat config.yaml | axon write web-1 /etc/app/config.yaml
 
-# Port forwarding (expose remote port locally)
-axon forward <node> <local-port>:<remote-port>
-axon forward db-1 5432:5432      # Access remote PostgreSQL locally
-axon forward web-1 8080:80       # Access remote HTTP locally
+# Port forwarding
+axon forward create db-1 5432:5432    # Non-blocking, managed
+axon forward list                      # List active forwards
+axon forward delete <id>               # Remove a forward
+axon forward db-1 5432:5432           # Blocking shorthand
 ```
 
-### That's it.
-
 4 operations. Everything else is a combination of these, guided by skills.
+
+→ Full reference: [CLI Reference](docs/cli.md)
 
 ## How Agents Use Axon
 
@@ -141,10 +113,6 @@ Domain knowledge comes from **skills** — markdown files that teach the agent w
 
 ```markdown
 # skill: deploy-service
-## Tools
-- axon exec <node> <command>
-- axon write <node> <path>
-
 ## Steps
 1. axon write <node> /opt/<service>/docker-compose.yaml
 2. axon exec <node> "cd /opt/<service> && docker compose pull"
@@ -154,37 +122,28 @@ Domain knowledge comes from **skills** — markdown files that teach the agent w
 
 Different scenario? Different skill. Same CLI.
 
+An [AgentSkill for Axon](skills/axon/) is included in this repo.
+
+## Features
+
+- **Remote execution** — Run commands on any connected node, real-time stdout/stderr streaming
+- **File operations** — Read and write files on remote nodes via stdin/stdout
+- **Port forwarding** — Map remote ports to localhost, with daemon-managed multi-forward support
+- **Reverse connection** — Nodes connect outbound to server; no inbound ports, works behind NAT/firewalls
+- **Token-based auth** — JWT with JTI, revocation, and join-token enrollment for agents
+- **User management** — Create, list, update, delete users with per-node access control
+- **Auto-TLS** — Self-signed CA and server certificate generated automatically; BYO cert supported
+- **Audit logging** — Every operation recorded with timestamp, caller, node, and result
+- **Single-binary deployment** — One binary per component, cross-platform (Linux/macOS, amd64/arm64)
+- **Server daemon mode** — Run server in background with `--daemon`, stop with `axon-server stop`
+
 ## Security
 
 - **Token-based auth** — JWT with unique JTI, revocation support
-- **User management** — SQLite-backed users with bcrypt passwords, CRUD via CLI
+- **User management** — Per-user node access control
 - **Audit log** — Every operation logged with timestamp, caller, node, command, result
 - **No inbound ports on nodes** — Reverse connection only
-- **Auto-TLS** — Self-signed CA + server cert generated automatically; bring-your-own-cert supported
-- **Token lifecycle** — List, revoke, and rotate tokens via CLI
-
-## Roadmap
-
-### Phase 1: Foundation ✅
-- [x] axon-server: gRPC server, node registry, auth, routing, audit
-- [x] axon-agent: reverse connection, exec, read, write, forward
-- [x] axon CLI: full command set (exec, read, write, forward, node management)
-- [x] Token-based authentication (JWT)
-- [x] Audit logging (SQLite)
-- [x] Data plane bridge (CLI ↔ Server ↔ Agent streaming)
-
-### Phase 2: Production Hardening (in progress)
-- [x] P2-1: Registry SQLite persistence + stable node_id
-- [x] P2-2: Token management (JTI, revoke, list)
-- [x] P2-3: User store persistence (SQLite CRUD, bootstrap from config)
-- [x] P2-4: Auto-TLS (self-signed CA, server cert, auto-renewal)
-- [ ] P2-5: Agent security policies (command allowlist, path restrictions)
-
-### Phase 3: Ecosystem
-- [ ] Web dashboard (read-only status, grpc-gateway)
-- [ ] Plugin system for custom node capabilities
-- [ ] Pre-built skills library
-- [ ] Agent auto-update
+- **Auto-TLS** — Self-signed CA + server cert generated automatically; BYO cert supported
 
 ## Documentation
 
@@ -196,15 +155,10 @@ Different scenario? Different skill. Same CLI.
 - [Server Design](docs/server.md) — Server internals
 - [Agent Design](docs/agent.md) — Agent internals
 
-## Tech Stack
+## Contributing
 
-- **Language**: Go
-- **Communication**: gRPC over HTTP/2 (full chain)
-- **Auth**: JWT (HMAC-SHA256) with JTI + revocation
-- **Persistence**: SQLite (WAL mode, single shared DB)
-- **TLS**: Auto-TLS (ECDSA P-256) or explicit certs
-- **Build**: Single binary per component, cross-platform
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branch conventions, and PR guidelines.
 
 ## License
 
-TBD
+Apache License 2.0 — see [LICENSE](LICENSE).
