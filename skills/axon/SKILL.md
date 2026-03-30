@@ -2,9 +2,9 @@
 name: axon
 description: >
   Manage remote machines via Axon — exec commands, read/write files, forward ports,
-  manage nodes, users, tokens, and server/agent lifecycle.
+  manage nodes, tokens, and server/agent lifecycle.
   Use when: (1) running commands on remote nodes, (2) reading/writing remote files,
-  (3) port forwarding, (4) listing/inspecting nodes, (5) managing users or tokens,
+  (3) port forwarding, (4) listing/inspecting nodes, (5) managing tokens,
   (6) deploying or updating axon-server/axon-agent, (7) troubleshooting agent connectivity.
   NOT for: local-only operations, CI/CD pipeline config, or tasks unrelated to remote machine management.
 ---
@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.
 ### Server
 
 ```bash
-axon-server init --admin admin --password <pass>
+axon-server init
 axon-server start --config ~/.axon-server/config.yaml
 # Or daemon mode:
 axon-server start --config ~/.axon-server/config.yaml --daemon
@@ -112,20 +112,12 @@ axon node remove <node>           # unregister
 ### Token Management
 
 ```bash
-axon token create-join --max-uses 10 --expires 24h
-axon token list-join
-axon token revoke-join <id>
-axon auth list-tokens
-axon auth revoke <token-id>
-```
-
-### User Management
-
-```bash
-axon user create <name> --node-ids web-1,db-1
-axon user list
-axon user update <name> --node-ids web-1,db-1,db-2
-axon user delete <name>
+axon token list                                   # list all active tokens
+axon token list --kind cli                        # filter by kind
+axon token revoke <token-id>                      # revoke a token
+axon token create-join --max-uses 10 --expires 24h  # create join token
+axon token list-join                              # list join tokens
+axon token revoke-join <id>                       # revoke join token
 ```
 
 ## Troubleshooting

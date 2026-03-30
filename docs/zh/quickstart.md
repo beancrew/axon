@@ -12,7 +12,7 @@
 ## 1. 编译
 
 ```bash
-git clone https://github.com/garysng/axon.git
+git clone https://github.com/beancrew/axon.git
 cd axon
 make build
 ```
@@ -27,10 +27,10 @@ make build
 
 ## 2. 初始化 Server
 
-一条命令搞定 — 生成配置、JWT 密钥、管理员用户和 join token：
+一条命令搞定 — 生成配置、JWT 密钥、admin token 和 join token：
 
 ```bash
-./bin/axon-server init --admin admin --password your-secret-password
+./bin/axon-server init
 ```
 
 输出：
@@ -41,7 +41,9 @@ Server initialized
    Config:     ~/.axon-server/config.yaml
    Database:   ~/.axon-server/axon.db
    Listen:     :9090
-   Admin user: admin
+
+Admin token (save this):
+   eyJhbGciOiJIUzI1NiIs...
 
 Start the server:
    axon-server start --config ~/.axon-server/config.yaml
@@ -51,18 +53,16 @@ Join a node:
 
 Use CLI:
    axon config set server <SERVER_IP>:9090
-   axon auth login
+   axon config set token <admin-token>
 ```
 
-**保存 join token** — 后面注册 Agent 要用。
+**保存 admin token 和 join token** — 配置 CLI 和注册 Agent 都要用。
 
 ### `init` 选项
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
 | `--listen` | `:9090` | gRPC 监听地址 |
-| `--admin` | `admin` | 管理员用户名 |
-| `--password` | *(交互输入)* | 管理员密码 |
 | `--data-dir` | `~/.axon-server` | 数据目录（配置、数据库、证书） |
 | `--tls` | `false` | 启用自动 TLS（自签 CA + 服务端证书） |
 | `--force` | `false` | 覆盖已有配置 |
@@ -102,12 +102,6 @@ Node enrolled successfully
 Starting agent... (Ctrl+C to stop)
 ```
 
-一步完成：
-- 验证 join token
-- 获取 Agent JWT
-- 保存配置到 `~/.axon-agent/config.yaml`
-- 启动 Agent 控制面循环
-
 ### `join` 选项
 
 | 参数 | 默认值 | 说明 |
@@ -125,16 +119,14 @@ Starting agent... (Ctrl+C to stop)
 ./bin/axon-agent start
 ```
 
-Agent 自动读取保存的配置（`~/.axon-agent/config.yaml`）。
-
-## 5. CLI 登录
+## 5. 配置 CLI
 
 ```bash
 # 设置 Server 地址
 ./bin/axon config set server <SERVER_IP>:9090
 
-# 登录（提示输入用户名/密码）
-./bin/axon auth login
+# 设置 init 输出的 admin token
+./bin/axon config set token <admin-token>
 ```
 
 ## 6. 执行命令
@@ -153,14 +145,20 @@ axon read my-node /etc/hostname
 # 写入文件
 echo "hello from axon" | axon write my-node /tmp/hello.txt
 
-# 端口转发
-axon forward my-node 8080:80
-# 现在 localhost:8080 → my-node:80
+# 端口转发（非阻塞）
+axon forward create my-node 8080:80
+# Forward f1a2b3c4 created: 127.0.0.1:8080 → my-node:80
+
+axon forward list
+axon forward delete f1a2b3c4
 ```
 
-## 7. 管理 Join Token
+## 7. 管理 Token
 
 ```bash
+# 列出活跃 token
+axon token list
+
 # 创建新 join token（可选限制）
 axon token create-join --max-uses 10 --expires 24h
 
@@ -169,22 +167,6 @@ axon token list-join
 
 # 吊销 token
 axon token revoke-join <token-id>
-```
-
-## 8. 管理用户（可选）
-
-```bash
-# 创建用户
-axon user create deploy-bot --node-ids web-1,web-2
-
-# 列出用户
-axon user list
-
-# 更新节点权限
-axon user update deploy-bot --node-ids web-1,web-2,db-1
-
-# 删除用户
-axon user delete deploy-bot
 ```
 
 ## TLS 选项
@@ -205,13 +187,13 @@ TLS **默认关闭** — 明文 gRPC 适用于内网/私有网络。
 
 ```bash
 # 安装 Server
-curl -fsSL https://axon.dev/install | sh -s -- server
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- server
 
 # 安装 Agent
-curl -fsSL https://axon.dev/install | sh -s -- agent
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
 
 # 安装 CLI
-curl -fsSL https://axon.dev/install | sh -s -- cli
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 ```
 
 脚本自动检测 OS/架构，安装到 `/usr/local/bin`（无 root 权限时安装到 `~/.axon/bin`）。

@@ -33,17 +33,11 @@ ca_cert: "/path/to/ca.crt" # optional, for TLS
 | `node list` | List nodes | unary | ✅ |
 | `node info <node>` | Node details | unary | ✅ |
 | `node remove <node>` | Remove node | unary | ✅ |
-| `auth login` | Get JWT token | unary | ❌ |
-| `auth token` | Show current token | local | — |
-| `auth list-tokens` | List issued tokens | unary | ✅ |
-| `auth revoke <id>` | Revoke token | unary | ✅ |
+| `token list` | List active tokens | unary | ✅ |
+| `token revoke <id>` | Revoke token | unary | ✅ |
 | `token create-join` | Create join token | unary | ✅ |
 | `token list-join` | List join tokens | unary | ✅ |
 | `token revoke-join <id>` | Revoke join token | unary | ✅ |
-| `user create <name>` | Create user | unary | ✅ |
-| `user list` | List users | unary | ✅ |
-| `user update <name>` | Update user | unary | ✅ |
-| `user delete <name>` | Delete user | unary | ✅ |
 | `config set <k> <v>` | Set config | local | — |
 | `config get <k>` | Get config | local | — |
 | `version` | Show version | local | — |
@@ -52,7 +46,7 @@ ca_cert: "/path/to/ca.crt" # optional, for TLS
 
 | Command | Description |
 |---------|-------------|
-| `init` | Initialize config, DB, admin user, join token |
+| `init` | Initialize config, DB, admin token, join token |
 | `start` | Start gRPC server (add `--daemon` for background) |
 | `stop` | Stop daemon |
 | `status` | Show server status |
@@ -78,6 +72,6 @@ ca_cert: "/path/to/ca.crt" # optional, for TLS
 
 ## GitHub
 
-- Repo: `beancrew/axon` (private)
+- Repo: `beancrew/axon`
 - Releases: `https://github.com/beancrew/axon/releases`
 - Install script: `scripts/install.sh` (auto-detect OS/arch)
