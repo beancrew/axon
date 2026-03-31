@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 type exitError struct{ code int }

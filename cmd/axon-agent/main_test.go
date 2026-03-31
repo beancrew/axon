@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/garysng/axon/pkg/display"
+	"github.com/beancrew/axon/pkg/display"
 )
 
 // ── writePID / readPID ──────────────────────────────────────────────────────

@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/auth"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/auth"
 )
 
 const (

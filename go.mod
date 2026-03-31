@@ -1,4 +1,4 @@
-module github.com/garysng/axon
+module github.com/beancrew/axon
 
 go 1.25.0
 

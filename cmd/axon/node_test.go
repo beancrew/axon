@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	"github.com/garysng/axon/pkg/display"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	"github.com/beancrew/axon/pkg/display"
 )
 
 func TestFilterByStatus(t *testing.T) {

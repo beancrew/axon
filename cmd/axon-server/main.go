@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/garysng/axon/internal/server"
+	"github.com/beancrew/axon/internal/server"
 )
 
 var version = "dev"

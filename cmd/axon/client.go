@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
-	"github.com/garysng/axon/pkg/config"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
+	"github.com/beancrew/axon/pkg/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"

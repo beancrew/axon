@@ -1,7 +1,7 @@
 syntax = "proto3";
 package axon.control;
 
-option go_package = "github.com/garysng/axon/gen/proto/control";
+option go_package = "github.com/beancrew/axon/gen/proto/control";
 
 service ControlService {
   // Agent establishes a persistent control channel on startup.

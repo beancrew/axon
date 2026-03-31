@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	autotls "github.com/garysng/axon/pkg/tls"
+	autotls "github.com/beancrew/axon/pkg/tls"
 )
 
 // TestGenerateCA verifies that GenerateCA creates valid PEM files containing

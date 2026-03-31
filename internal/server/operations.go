@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
-	"github.com/garysng/axon/pkg/audit"
-	"github.com/garysng/axon/pkg/auth"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
+	"github.com/beancrew/axon/pkg/audit"
+	"github.com/beancrew/axon/pkg/auth"
 )
 
 const agentAttachTimeout = 30 * time.Second

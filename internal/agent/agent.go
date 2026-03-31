@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	"github.com/garysng/axon/pkg/config"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	"github.com/beancrew/axon/pkg/config"
 )
 
 // TaskHandler is called when the server dispatches a task to this agent.

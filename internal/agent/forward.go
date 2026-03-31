@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 const forwardBufSize = 32 * 1024 // 32 KB

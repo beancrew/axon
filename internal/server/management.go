@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/auth"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/auth"
 )
 
 // ManagementService implements managementpb.ManagementServiceServer.

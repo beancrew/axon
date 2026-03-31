@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 // outputCollector collects ExecOutput messages for assertions.

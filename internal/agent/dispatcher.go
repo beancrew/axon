@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 // Dispatcher opens data plane streams to the server to fulfill dispatched tasks.

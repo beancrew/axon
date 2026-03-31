@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	operationspb "github.com/garysng/axon/gen/proto/operations"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
 )
 
 // startEchoServer starts a TCP server that echoes received data back.

@@ -17,13 +17,13 @@ import (
 
 	_ "modernc.org/sqlite" // SQLite driver
 
-	controlpb "github.com/garysng/axon/gen/proto/control"
-	managementpb "github.com/garysng/axon/gen/proto/management"
-	operationspb "github.com/garysng/axon/gen/proto/operations"
-	"github.com/garysng/axon/internal/server/registry"
-	"github.com/garysng/axon/pkg/audit"
-	"github.com/garysng/axon/pkg/auth"
-	autotls "github.com/garysng/axon/pkg/tls"
+	controlpb "github.com/beancrew/axon/gen/proto/control"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
+	operationspb "github.com/beancrew/axon/gen/proto/operations"
+	"github.com/beancrew/axon/internal/server/registry"
+	"github.com/beancrew/axon/pkg/audit"
+	"github.com/beancrew/axon/pkg/auth"
+	autotls "github.com/beancrew/axon/pkg/tls"
 )
 
 // ServerConfig holds configuration for the gRPC server.

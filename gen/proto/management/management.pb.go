@@ -7,7 +7,7 @@
 package management
 
 import (
-	control "github.com/garysng/axon/gen/proto/control"
+	control "github.com/beancrew/axon/gen/proto/control"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1907,7 +1907,7 @@ const file_management_proto_rawDesc = "" +
 	"\x0fCreateJoinToken\x12'.axon.management.CreateJoinTokenRequest\x1a(.axon.management.CreateJoinTokenResponse\x12a\n" +
 	"\x0eListJoinTokens\x12&.axon.management.ListJoinTokensRequest\x1a'.axon.management.ListJoinTokensResponse\x12d\n" +
 	"\x0fRevokeJoinToken\x12'.axon.management.RevokeJoinTokenRequest\x1a(.axon.management.RevokeJoinTokenResponse\x12R\n" +
-	"\tJoinAgent\x12!.axon.management.JoinAgentRequest\x1a\".axon.management.JoinAgentResponseB.Z,github.com/garysng/axon/gen/proto/managementb\x06proto3"
+	"\tJoinAgent\x12!.axon.management.JoinAgentRequest\x1a\".axon.management.JoinAgentResponseB/Z-github.com/beancrew/axon/gen/proto/managementb\x06proto3"
 
 var (
 	file_management_proto_rawDescOnce sync.Once

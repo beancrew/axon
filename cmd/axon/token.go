@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	managementpb "github.com/garysng/axon/gen/proto/management"
+	managementpb "github.com/beancrew/axon/gen/proto/management"
 )
 
 func tokenCmd() *cobra.Command {

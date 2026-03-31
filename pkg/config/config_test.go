@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/garysng/axon/pkg/config"
+	"github.com/beancrew/axon/pkg/config"
 )
 
 // writeTemp writes content to a temp file and returns its path.
