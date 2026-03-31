@@ -367,7 +367,7 @@ axon token revoke-join <token-id>
 
 ```bash
 #!/bin/sh
-# Usage: curl -fsSL https://axon.dev/install | sh -s -- [server|agent|cli]
+# Usage: curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- [server|agent|cli]
 #
 # Detects OS/ARCH, downloads the appropriate binary from GitHub Releases,
 # installs to /usr/local/bin (or ~/.axon/bin if no root).

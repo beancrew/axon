@@ -125,7 +125,7 @@ axon token revoke-join <id>                       # revoke join token
 | Symptom | Check |
 |---------|-------|
 | Node shows offline | `axon-agent status` on target; check network to server |
-| Auth error (exit 2) | Token expired → `axon auth login` or re-create token |
+| Auth error (exit 2) | Token expired/revoked → get new token from admin, `axon config set token <new-token>` |
 | Connection refused | Server running? `axon-server start` or check listen addr |
 | TLS errors | Match TLS config: `--tls-insecure` for no-TLS server, `--ca-cert` for self-signed |
 

@@ -242,5 +242,4 @@ All authenticated RPCs pass through a unary/stream interceptor that:
 | `write` | Client stream → unary response | TaskSignal + HandleTask bidi | file chunks |
 | `forward` | Bidi stream | TaskSignal + HandleTask bidi | raw TCP bytes |
 | `node list` | Unary | — | — |
-| `login` | Unary | — | — |
-| `user create` | Unary | — | — |
+| `token list` | Unary | — | — |

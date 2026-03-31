@@ -119,10 +119,6 @@ TLS **默认关闭** — 明文 gRPC 适用于内网/私有网络。
 - 未设置时默认为内存数据库（重启丢失）
 - 审计日志使用独立 SQLite 文件（`audit.db_path`）
 
-### 引导用户
-
-配置文件中定义的用户在启动时通过 `INSERT OR IGNORE` 写入数据库 — 已存在的用户不会被覆盖。初始引导后，通过 `axon user` CLI 命令或 gRPC `ManagementService` RPC 管理用户。
-
 ---
 
 ## Agent（`axon-agent`）
@@ -190,7 +186,7 @@ Agent 根据配置选择传输方式：
 
 ```yaml
 server_addr: "axon.example.com:9090"
-token: "eyJhbGciOiJIUzI1NiIs..."   # axon auth login 设置
+token: "eyJhbGciOiJIUzI1NiIs..."   # axon config set token 设置
 output_format: "table"               # "table" 或 "json"
 ca_cert: "/path/to/ca.crt"          # CA 证书（TLS 验证）
 ```
@@ -200,7 +196,7 @@ ca_cert: "/path/to/ca.crt"          # CA 证书（TLS 验证）
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `server_addr` | string | — | Server gRPC 地址 |
-| `token` | string | — | JWT token（`axon auth login` 设置） |
+| `token` | string | — | JWT token（`axon config set token` 设置） |
 | `output_format` | string | `table` | 默认输出格式 |
 | `ca_cert` | string | — | CA 证书路径（TLS 验证） |
 
