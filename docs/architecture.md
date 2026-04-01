@@ -1,6 +1,5 @@
 # Axon Architecture Overview
 
-> [中文版 / Chinese](zh/architecture.md)
 
 ## Components
 

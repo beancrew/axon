@@ -2,7 +2,6 @@
 
 Get Axon running in under 5 minutes: a server, an agent, and your first remote command.
 
-> [中文版 / Chinese](zh/quickstart.md)
 
 ## Prerequisites
 

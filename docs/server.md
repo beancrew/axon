@@ -1,6 +1,5 @@
 # Axon Server Design
 
-> [中文版 / Chinese](zh/server.md)
 
 ## Overview
 

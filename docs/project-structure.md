@@ -1,6 +1,5 @@
 # Axon Project Structure
 
-> [中文版 / Chinese](zh/project-structure.md)
 
 ## Directory Layout
 
