@@ -174,22 +174,6 @@ axon token list-join
 axon token revoke-join <token-id>
 ```
 
-## 8. Manage Users (Optional)
-
-```bash
-# Create a new user
-axon user create deploy-bot --node-ids web-1,web-2
-
-# List users
-axon user list
-
-# Update node access
-axon user update deploy-bot --node-ids web-1,web-2,db-1
-
-# Delete a user
-axon user delete deploy-bot
-```
-
 ## TLS Options
 
 TLS is **disabled by default** — plaintext gRPC is suitable for internal/private networks.
@@ -208,13 +192,13 @@ Download pre-built binaries from GitHub Releases:
 
 ```bash
 # Install the server
-curl -fsSL https://axon.dev/install | sh -s -- server
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- server
 
 # Install the agent
-curl -fsSL https://axon.dev/install | sh -s -- agent
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
 
 # Install the CLI
-curl -fsSL https://axon.dev/install | sh -s -- cli
+curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 ```
 
 The script auto-detects OS/architecture and installs to `/usr/local/bin` (or `~/.axon/bin` if no root access).

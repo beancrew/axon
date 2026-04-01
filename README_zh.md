@@ -1,5 +1,8 @@
 # Axon
 
+[![CI](https://github.com/beancrew/axon/actions/workflows/ci.yml/badge.svg)](https://github.com/beancrew/axon/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 **连接 AI Agent 与真实机器的神经通路。**
 
 Axon 是为 AI agent 构建的基础设施。它让 agent 操作远程机器——执行命令、读写文件、转发端口——像操作本地一样自然。
@@ -48,13 +51,20 @@ curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 
-# 初始化 server
+# 1. 初始化 server（保存输出中的 admin token 和 join token）
 axon-server init
 
-# 加入节点
+# 2. 启动 server
+axon-server start
+
+# 3. 在目标机器上加入节点
 axon-agent join <server-addr>:9090 <join-token>
 
-# 使用
+# 4. 配置 CLI
+axon config set server <server-addr>:9090
+axon config set token <admin-token>
+
+# 5. 使用
 axon exec my-node "hostname"
 ```
 
@@ -141,7 +151,7 @@ exec("axon exec web-1 'systemctl reload nginx'")
 
 - **节点无入站端口** — Agent 仅外连，不开 SSH，不开端口
 - **Token 吊销** — 被泄露的 token 可通过 CLI 即时吊销
-- **专利保护** — Apache 2.0 许可证包含专利授权和报复条款
+- **专利保护** — Apache 2.0 许可证包含专利授权
 - **完整审计链** — 谁、在哪台机器、什么时候、做了什么——全部记录
 
 ## 文档

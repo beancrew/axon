@@ -49,7 +49,7 @@ Single gRPC server on one port. All three services registered on the same server
 |---------|--------|-------------|
 | `ControlService` | Agent | Registration, heartbeat, task dispatch |
 | `OperationsService` | CLI | exec, read, write, forward |
-| `ManagementService` | CLI | Node/user/token management, auth login |
+| `ManagementService` | CLI | Node/token management |
 
 ### 2. Node Registry (SQLite-backed)
 

@@ -69,13 +69,7 @@ axon-agent ──── 主动 gRPC ────→ axon-server ←──── 
 - 每个 CLI Token 有唯一 **JTI**（JWT ID）
 - Token 持久化到 SQLite，可列表和吊销
 - 吊销的 Token 在内存中 O(1) 检查（gRPC 拦截器）
-- CLI 命令：`axon auth list-tokens`、`axon auth revoke <id>`
-
-### 用户管理
-
-- 用户存储在 SQLite，bcrypt 密码哈希
-- 配置文件中的引导用户在首次启动时写入（INSERT OR IGNORE）
-- 完整 CRUD：`axon user create/list/update/delete`
+- CLI 命令：`axon token list`、`axon token revoke <id>`
 
 ## 持久化
 
@@ -84,8 +78,7 @@ axon-agent ──── 主动 gRPC ────→ axon-server ←──── 
 | 表 | 内容 |
 |-----|------|
 | `nodes` | 节点注册表（ID、名称、状态、元数据、token hash） |
-| `tokens` | 已签发的 JWT Token（JTI、类型、用户、节点、时间戳、吊销状态） |
-| `users` | CLI 用户（用户名、密码哈希、节点权限、时间戳、禁用状态） |
+| `tokens` | 已签发的 JWT Token（JTI、类型、节点、时间戳、吊销状态） |
 | `audit_log` | 操作审计（独立 SQLite 文件） |
 
 ### 节点身份

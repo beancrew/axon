@@ -12,15 +12,14 @@ axon/
 │   │   ├── client.go                # gRPC 连接（TLS、认证）
 │   │   ├── node.go                  # node list/info/remove
 │   │   ├── exec.go / read.go / write.go / forward.go
-│   │   ├── auth.go                  # auth login/token/list-tokens/revoke/rotate
-│   │   └── user.go                  # user create/list/update/delete
+│   │   └── token.go                 # token list/revoke/create-join/list-join/revoke-join
 │   ├── axon-server/main.go          # Server 入口
 │   └── axon-agent/main.go           # Agent 入口
 │
 ├── proto/                           # Protocol Buffers 定义
 │   ├── control.proto                # Agent ↔ Server 控制面
 │   ├── operations.proto             # 操作 + Agent 数据面
-│   └── management.proto             # 节点/用户/Token 管理
+│   └── management.proto             # 节点/Token 管理
 │
 ├── gen/proto/                       # 生成代码
 │

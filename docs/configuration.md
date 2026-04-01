@@ -113,15 +113,11 @@ Generated files:
 
 ### Data Persistence
 
-All persistent data (node registry, tokens, users, join tokens) is stored in a single SQLite database with WAL mode. The path is set via `data.db_path`:
+All persistent data (node registry, tokens, join tokens) is stored in a single SQLite database with WAL mode. The path is set via `data.db_path`:
 
 - `axon-server init` sets this to `~/.axon-server/axon.db` automatically
 - If not set, defaults to in-memory (data lost on restart)
 - Audit logs use a separate SQLite file (`audit.db_path`)
-
-### Bootstrap Users
-
-Users defined in the config file are seeded into the database on startup using `INSERT OR IGNORE` — existing users are not overwritten. After initial bootstrap, manage users via the `axon user` CLI commands or the gRPC `ManagementService` RPCs.
 
 ---
 
@@ -190,7 +186,7 @@ Config file path: `~/.axon/config.yaml`
 
 ```yaml
 server_addr: "axon.example.com:9090"
-token: "eyJhbGciOiJIUzI1NiIs..."   # set by `axon auth login`
+token: "eyJhbGciOiJIUzI1NiIs..."   # set by `axon config set token`
 output_format: "table"               # "table" or "json"
 ca_cert: "/path/to/ca.crt"          # CA certificate for TLS verification
 ```
@@ -200,7 +196,7 @@ ca_cert: "/path/to/ca.crt"          # CA certificate for TLS verification
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `server_addr` | string | — | Server gRPC address |
-| `token` | string | — | JWT token (set by `axon auth login`) |
+| `token` | string | — | JWT token (set by `axon config set token`) |
 | `output_format` | string | `table` | Default output format |
 | `ca_cert` | string | — | Path to CA certificate for TLS verification |
 

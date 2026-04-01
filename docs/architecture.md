@@ -99,14 +99,7 @@ JWT-based. Server holds the signing key.
 - Each issued CLI token gets a unique **JTI** (JWT ID)
 - Tokens are persisted in SQLite — can be listed and revoked
 - Revoked tokens are checked in-memory (O(1) lookup) via gRPC interceptor
-- CLI commands: `axon auth list-tokens`, `axon auth revoke <id>`
-
-### User Management
-
-- Users are stored in SQLite with bcrypt password hashes
-- Bootstrap users from config file are seeded on first start (INSERT OR IGNORE)
-- Full CRUD via gRPC RPCs and CLI: `axon user create/list/update/delete`
-- Users can be disabled without deletion
+- CLI commands: `axon token list`, `axon token revoke <id>`
 
 ## Persistence
 
@@ -115,8 +108,7 @@ All persistent state lives in a **single shared SQLite database** (WAL mode):
 | Table | Contents |
 |-------|----------|
 | `nodes` | Node registry (ID, name, status, metadata, token hash) |
-| `tokens` | Issued JWT tokens (JTI, kind, user, nodes, timestamps, revoked) |
-| `users` | CLI users (username, password hash, node IDs, timestamps, disabled) |
+| `tokens` | Issued JWT tokens (JTI, kind, nodes, timestamps, revoked) |
 | `audit_log` | Operation audit trail (separate SQLite file) |
 
 ### Node Identity

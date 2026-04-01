@@ -15,8 +15,7 @@ axon/
 │   │   ├── read.go                  # read command
 │   │   ├── write.go                 # write command
 │   │   ├── forward.go               # forward command
-│   │   ├── auth.go                  # auth login/token/list-tokens/revoke/rotate
-│   │   └── user.go                  # user create/list/update/delete
+│   │   └── token.go                 # token list/revoke/create-join/list-join/revoke-join
 │   ├── axon-server/                 # Server binary
 │   │   └── main.go                  # Config loading + server start
 │   └── axon-agent/                  # Agent binary

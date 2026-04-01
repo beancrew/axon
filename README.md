@@ -1,5 +1,8 @@
 # Axon
 
+[![CI](https://github.com/beancrew/axon/actions/workflows/ci.yml/badge.svg)](https://github.com/beancrew/axon/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 **The nerve connecting AI agents to real machines.**
 
 Axon is infrastructure for AI agents. It lets agents operate remote machines — execute commands, read/write files, forward ports — as naturally as operating locally.
@@ -48,13 +51,20 @@ curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 
-# Initialize server
+# 1. Initialize server (save the admin token and join token from the output)
 axon-server init
 
-# Join a node
+# 2. Start server
+axon-server start
+
+# 3. Join a node (on the target machine)
 axon-agent join <server-addr>:9090 <join-token>
 
-# Use it
+# 4. Configure CLI
+axon config set server <server-addr>:9090
+axon config set token <admin-token>
+
+# 5. Use it
 axon exec my-node "hostname"
 ```
 
@@ -141,7 +151,7 @@ An [AgentSkill for Axon](skills/axon/) is included in this repo.
 
 - **No inbound ports on nodes** — Agents connect outbound only; no SSH, no open ports
 - **Token revocation** — Compromised tokens can be revoked instantly via CLI
-- **Patent retaliation** — Apache 2.0 license includes patent grant with retaliation clause
+- **Patent protection** — Apache 2.0 license includes patent grant
 - **Full audit trail** — Who did what, on which node, when — every operation recorded
 
 ## Documentation
