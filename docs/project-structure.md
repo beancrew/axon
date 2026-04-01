@@ -24,7 +24,7 @@ axon/
 ├── proto/                           # Protocol Buffers definitions
 │   ├── control.proto                # Agent ↔ Server control plane
 │   ├── operations.proto             # exec/read/write/forward + AgentOps
-│   └── management.proto             # Node/user/token management + auth
+│   └── management.proto             # Node/token/join-token management + enrollment
 │
 ├── gen/                             # Generated code from proto
 │   └── proto/
@@ -55,7 +55,7 @@ axon/
 │   │   ├── server.go                # gRPC server setup, DB init, TLS, lifecycle
 │   │   ├── control.go               # ControlService (agent registration + heartbeat)
 │   │   ├── operations.go            # OperationsService (CLI → agent routing)
-│   │   ├── management.go            # ManagementService (node/user/token CRUD)
+│   │   ├── management.go            # ManagementService (node/token/join-token management)
 │   │   ├── agent_ops.go             # AgentOpsService (agent data plane)
 │   │   ├── router.go                # Request routing + stream bridging
 │   │   ├── bridge.go                # CLI ↔ Agent stream bridge
@@ -92,9 +92,11 @@ axon/
 │   ├── server.md                    # Server design
 │   ├── agent.md                     # Agent design
 │   ├── project-structure.md         # This file
-│   ├── phase2-design.md             # Phase 2 design document
-│   ├── data-plane-bridge.md         # Data plane bridge design
-│   ├── tasks-phase1.md              # Phase 1 task breakdown (historical)
+│   ├── internal/                    # Internal design docs (historical)
+│   │   ├── phase2-design.md
+│   │   ├── data-plane-bridge.md
+│   │   ├── join-token-design.md
+│   │   └── tasks-phase1.md
 │   └── zh/                          # Documentation (Chinese)
 │
 ├── Makefile

@@ -57,19 +57,21 @@ axon-agent ──── 主动 gRPC ────→ axon-server ←──── 
 
 ## 认证
 
-基于 JWT，Server 持有签名密钥。
+基于预签发 Token。`axon-server init` 生成 admin token + 初始 join token。
 
 | Token 类型 | 作用域 | 生命周期 |
 |-----------|--------|---------|
-| CLI Token | 绑定用户 + 允许的节点列表 | 可配置（默认 24h） |
-| Agent Token | 绑定节点身份 | 注册时使用 |
+| CLI Token | 绑定身份 + 允许的节点列表 | 永不过期（`init` 签发） |
+| Agent Token | 绑定节点身份 | 永不过期（`join` 时签发） |
+| Join Token | Agent 注册 | 可配置（最大使用次数 / 过期时间） |
 
 ### Token 管理
 
-- 每个 CLI Token 有唯一 **JTI**（JWT ID）
+- 每个 Token 有唯一 **JTI**（JWT ID）
 - Token 持久化到 SQLite，可列表和吊销
 - 吊销的 Token 在内存中 O(1) 检查（gRPC 拦截器）
 - CLI 命令：`axon token list`、`axon token revoke <id>`
+- Join Token 管理：`axon token create-join`、`axon token list-join`、`axon token revoke-join`
 
 ## 持久化
 
@@ -79,6 +81,7 @@ axon-agent ──── 主动 gRPC ────→ axon-server ←──── 
 |-----|------|
 | `nodes` | 节点注册表（ID、名称、状态、元数据、token hash） |
 | `tokens` | 已签发的 JWT Token（JTI、类型、节点、时间戳、吊销状态） |
+| `join_tokens` | Join Token（hash、使用次数、过期时间） |
 | `audit_log` | 操作审计（独立 SQLite 文件） |
 
 ### 节点身份
@@ -87,22 +90,24 @@ axon-agent ──── 主动 gRPC ────→ axon-server ←──── 
 
 ## TLS
 
-### Auto-TLS（默认）
-
-未配置显式证书时，Server 自动生成：
-- **CA**：ECDSA P-256，10 年有效期
-- **服务端证书**：ECDSA P-256，1 年有效期，30 天内过期自动续签
-- SAN：始终包含 `localhost` + `127.0.0.1` + 配置的主机名
-
-CA 证书需要分发给 Agent 和 CLI 客户端。
+TLS **默认关闭** — 明文 gRPC 适用于内网/私有网络。
 
 ### TLS 模式
 
 | 模式 | Server 配置 | 客户端/Agent |
 |------|-----------|------------|
-| Auto-TLS | 默认（不配 cert/key） | `--ca-cert ca.crt` |
+| 禁用 TLS（默认） | `tls.auto: false`（默认） | `--tls-insecure` |
+| Auto-TLS | `tls.auto: true` 或 `init --tls` | `--ca-cert ca.crt` |
 | 自带证书 | `tls.cert` + `tls.key` | 系统 CA 或 `--ca-cert` |
-| 禁用 TLS（开发） | `tls.auto: false` | `--tls-insecure` |
+
+### Auto-TLS
+
+启用 `tls.auto: true` 后，Server 自动生成：
+- **CA**：ECDSA P-256，10 年有效期
+- **服务端证书**：ECDSA P-256，1 年有效期，30 天内过期自动续签
+- SAN：始终包含 `localhost` + `127.0.0.1` + 配置的主机名
+
+`axon-agent join` 时 CA 证书自动下发给 Agent。
 
 ## 节点状态
 

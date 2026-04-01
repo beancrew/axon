@@ -91,8 +91,9 @@ JWT-based. Server holds the signing key.
 
 | Token Type | Scope | Lifetime |
 |------------|-------|----------|
-| CLI Token | Bound to user + allowed node list | Configurable expiry (default 24h) |
-| Agent Token | Bound to node identity | Used at registration |
+| CLI Token | Bound to identity + allowed node list | No expiry (issued by `init`) |
+| Agent Token | Bound to node identity | No expiry (issued during `join`) |
+| Join Token | Agent enrollment | Configurable (max uses / expiry) |
 
 ### Token Management
 
@@ -109,6 +110,7 @@ All persistent state lives in a **single shared SQLite database** (WAL mode):
 |-------|----------|
 | `nodes` | Node registry (ID, name, status, metadata, token hash) |
 | `tokens` | Issued JWT tokens (JTI, kind, nodes, timestamps, revoked) |
+| `join_tokens` | Join tokens for agent enrollment (hash, uses, expiry) |
 | `audit_log` | Operation audit trail (separate SQLite file) |
 
 ### Node Identity
@@ -117,9 +119,9 @@ Nodes get a stable `node_id` (UUID) on first registration, persisted in the agen
 
 ## TLS
 
-### Auto-TLS (Default)
+### Auto-TLS
 
-When no explicit TLS certificates are configured, the server auto-generates:
+When `tls.auto: true` is set and no explicit TLS certificates are configured, the server auto-generates:
 - **CA**: ECDSA P-256, 10-year validity, stored at `~/.axon-server/tls/ca.crt`
 - **Server cert**: ECDSA P-256, 1-year validity, auto-renewed when expiring within 30 days
 - SANs: always include `localhost` + `127.0.0.1` + configured hostname
@@ -130,9 +132,9 @@ The CA certificate must be distributed to agents and CLI clients for TLS verific
 
 | Mode | Server Config | Client/Agent |
 |------|--------------|--------------|
-| Auto-TLS | Default (no cert/key configured) | `--ca-cert ca.crt` |
+| No TLS (default) | `tls.auto: false` (default) | `--tls-insecure` |
+| Auto-TLS | `tls.auto: true` or `init --tls` | `--ca-cert ca.crt` |
 | Explicit cert | `tls.cert` + `tls.key` | System CA or `--ca-cert` |
-| No TLS (dev) | `tls.auto: false` | `--tls-insecure` |
 
 ## Node States
 

@@ -14,19 +14,24 @@
 安装二进制
     │
     ▼
-axon-agent start --server <addr> --token <token> [--name <name>]
+axon-agent join <server-addr> <join-token> [--name <name>]
     │
-    ├── 首次运行：
-    │   1. 保存配置到 ~/.axon-agent/config.yaml
-    │   2. 连接 Server（gRPC + TLS）
-    │   3. 发送 RegisterRequest（token + 节点名 + 系统信息）
-    │   4. 收到 RegisterResponse（node_id + 心跳间隔）
-    │   5. 保存 node_id（稳定身份）
+    ├── 注册（首次）：
+    │   1. 用 join token 向 Server 验证（JoinAgent RPC）
+    │   2. 收到 Agent JWT + 分配的 node_id + CA 证书（如启用 TLS）
+    │   3. 保存配置到 ~/.axon-agent/config.yaml
+    │   4. 连接 Server（gRPC）
+    │   5. 发送 RegisterRequest（token + 节点名 + 系统信息）
+    │   6. 收到 RegisterResponse（心跳间隔）
+    │   7. 开始心跳循环
     │
-    ├── 后续运行：
-    │   1. 读取本地配置
+    ▼
+axon-agent start（后续运行）
+    │
+    ├── 1. 读取本地配置
     │   2. 连接 Server
     │   3. 用已有 node_id 重新注册
+    │   4. 开始心跳循环
     │
     ▼
 运行中（等待任务）
@@ -64,7 +69,7 @@ Agent 的 TLS 三路选择：
 | 2 | `ca_cert` 已设置 | 用指定 CA 验证服务端证书 |
 | 3 | 都未设置 | 用系统 CA 池验证 |
 
-**Auto-TLS 场景下**：将 Server 的 `~/.axon-server/tls/ca.crt` 复制到 Agent 机器，配置 `ca_cert`。
+**Auto-TLS 场景下**：`axon-agent join` 时 Server 的 CA 证书自动下发并保存到 `~/.axon-agent/ca.crt`，无需手动复制。
 
 ## 任务执行
 

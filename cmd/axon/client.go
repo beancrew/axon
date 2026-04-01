@@ -52,7 +52,7 @@ func dialConn(withAuth bool) (*grpc.ClientConn, func(), error) {
 
 	if withAuth {
 		if cfg.Token == "" {
-			return nil, nil, fmt.Errorf("not authenticated; run: axon auth login")
+			return nil, nil, fmt.Errorf("not authenticated; run: axon config set token <admin-token>")
 		}
 		opts = append(opts,
 			grpc.WithUnaryInterceptor(bearerUnaryInterceptor(cfg.Token)),

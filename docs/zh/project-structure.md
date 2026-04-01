@@ -29,7 +29,7 @@ axon/
 │   │   ├── interceptor.go           # gRPC 拦截器（含吊销检查）
 │   │   ├── token_checker.go         # 内存吊销 JTI 集合
 │   │   ├── token_store.go           # Token SQLite 持久化
-│   │   └── user_store.go            # 用户 SQLite CRUD
+│   │   └── user_store.go            # 用户 SQLite 存储（历史保留）
 │   ├── audit/                       # 审计日志
 │   │   ├── audit.go / store.go / writer.go
 │   ├── config/config.go             # 共享配置类型
@@ -41,7 +41,7 @@ axon/
 │   │   ├── server.go                # 服务启动、DB 初始化、TLS
 │   │   ├── control.go               # ControlService
 │   │   ├── operations.go            # OperationsService
-│   │   ├── management.go            # ManagementService（节点/用户/Token CRUD）
+│   │   ├── management.go            # ManagementService（节点/Token/Join Token 管理）
 │   │   ├── agent_ops.go             # AgentOpsService
 │   │   ├── router.go / bridge.go    # 路由 + 流桥接
 │   │   └── registry/                # 节点注册表

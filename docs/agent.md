@@ -14,18 +14,21 @@
 Install binary
     │
     ▼
-axon-agent start --server <addr> --token <token> [--name <name>]
+axon-agent join <server-addr> <join-token> [--name <name>]
     │
-    ├── First run:
-    │   1. Save config to ~/.axon-agent/config.yaml
-    │   2. Connect to server (gRPC + TLS)
-    │   3. Send RegisterRequest (token + node_name + NodeInfo)
-    │   4. Receive RegisterResponse (node_id + heartbeat interval)
-    │   5. Save node_id to config (stable identity)
-    │   6. Begin heartbeat loop
+    ├── Enrollment (first time):
+    │   1. Validate join token with server (JoinAgent RPC)
+    │   2. Receive agent JWT + assigned node_id + CA cert (if TLS)
+    │   3. Save config to ~/.axon-agent/config.yaml
+    │   4. Connect to server (gRPC)
+    │   5. Send RegisterRequest (token + node_name + NodeInfo)
+    │   6. Receive RegisterResponse (heartbeat interval)
+    │   7. Begin heartbeat loop
     │
-    ├── Subsequent runs:
-    │   1. Read config from ~/.axon-agent/config.yaml
+    ▼
+axon-agent start  (subsequent runs)
+    │
+    ├── 1. Read config from ~/.axon-agent/config.yaml
     │   2. Connect to server
     │   3. Re-register with existing node_id (server recognizes returning node)
     │   4. Begin heartbeat loop
@@ -71,14 +74,38 @@ The agent uses a 3-way TLS selection:
 | 2 | `ca_cert` set | Verify server cert against specified CA file |
 | 3 | Neither | Verify server cert against system CA pool |
 
-**For auto-TLS setups:** Copy the server's `~/.axon-server/tls/ca.crt` to the agent machine and set `ca_cert` in config or pass `--ca-cert` flag.
+**For auto-TLS setups:** During `axon-agent join`, the server's CA cert is automatically sent to the agent and saved to `~/.axon-agent/ca.crt`. No manual copy needed.
 
 ## Commands
 
-### `axon-agent start`
+### `axon-agent join <server-addr> <join-token>`
+
+Enroll this machine with an Axon server. Validates the join token, receives an agent JWT, saves config, and starts the agent.
 
 ```
-$ axon-agent start --server axon.example.com:9090 --token <token> --ca-cert /path/to/ca.crt
+$ axon-agent join 10.0.1.1:9090 axon-join-ab12cd34... --tls-insecure
+Node enrolled successfully
+
+   Node ID:    a1b2c3d4-...
+   Node Name:  my-node
+   Server:     10.0.1.1:9090
+   Config:     ~/.axon-agent/config.yaml
+
+Starting agent... (Ctrl+C to stop)
+```
+
+- **Flags**:
+  - `--name <name>` — node name (optional, defaults to hostname)
+  - `--labels key=value` — labels (repeatable)
+  - `--ca-cert <path>` — CA certificate for TLS verification
+  - `--tls-insecure` — skip TLS (for servers without TLS)
+
+### `axon-agent start`
+
+Reconnect an already-enrolled agent using saved config.
+
+```
+$ axon-agent start
 [INFO] connecting to axon.example.com:9090...
 [INFO] registered as node "web-1" (id: a1b2c3d4)
 [INFO] heartbeat interval: 10s
@@ -86,12 +113,6 @@ $ axon-agent start --server axon.example.com:9090 --token <token> --ca-cert /pat
 ```
 
 - **Flags**:
-  - `--server <address>` — server address (saved to config on first run)
-  - `--token <token>` — agent token (saved to config)
-  - `--name <name>` — node name (optional, defaults to hostname)
-  - `--labels key=value` — labels (repeatable)
-  - `--ca-cert <path>` — CA certificate for TLS verification
-  - `--tls-insecure` — skip TLS verification (dev only)
   - `--foreground` — run in foreground
 
 ### `axon-agent stop`

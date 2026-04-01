@@ -49,7 +49,7 @@ Single gRPC server on one port. All three services registered on the same server
 |---------|--------|-------------|
 | `ControlService` | Agent | Registration, heartbeat, task dispatch |
 | `OperationsService` | CLI | exec, read, write, forward |
-| `ManagementService` | CLI | Node/token management |
+| `ManagementService` | CLI | Node/token/join-token management, agent enrollment |
 
 ### 2. Node Registry (SQLite-backed)
 
@@ -111,12 +111,13 @@ JWT-based authentication with token lifecycle management.
 
 | Type | Contains | Lifetime |
 |------|----------|----------|
-| CLI Token | `sub` (username), `node_ids`, `jti`, `exp`, `iat` | Default 24h |
-| Agent Token | `node_id` | Registration |
+| CLI Token | `sub`, `node_ids`, `jti`, `exp`, `iat` | No expiry (issued by `init`) |
+| Agent Token | `node_id`, `jti` | No expiry (issued during `join`) |
+| Join Token | plaintext, hashed in DB | Configurable (max uses / expiry) |
 
 **gRPC Interceptor:**
 
-All RPCs (except `Login` and `Connect`) pass through interceptors that:
+All RPCs (except `JoinAgent` and `Connect`) pass through interceptors that:
 1. Extract bearer token from gRPC metadata
 2. Verify HMAC-SHA256 signature
 3. Check expiry
@@ -137,30 +138,11 @@ CREATE TABLE tokens (
 );
 ```
 
-On Login, the issued token is persisted. On startup, revoked JTIs are loaded into an in-memory set.
-
-### 5. User Store (SQLite)
-
-Persistent user management replacing the config-file-only approach.
-
-```sql
-CREATE TABLE users (
-    username      TEXT PRIMARY KEY,
-    password_hash TEXT NOT NULL,     -- bcrypt
-    node_ids      TEXT NOT NULL,     -- JSON array
-    created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL,
-    disabled      INTEGER NOT NULL DEFAULT 0
-);
-```
-
-**Bootstrap:** Users defined in the config YAML are seeded on startup via `INSERT OR IGNORE` — existing DB users are not overwritten. After bootstrap, users are managed via gRPC RPCs (`CreateUser`, `UpdateUser`, `DeleteUser`, `ListUsers`).
-
-**Login flow:** Server looks up user in SQLite, checks `disabled` flag, verifies bcrypt password, signs JWT with JTI, persists token to store.
+Tokens are persisted when issued (at `init` or during `join`). On startup, revoked JTIs are loaded into an in-memory set.
 
 ### 6. TLS
 
-**Auto-TLS (default):** When no explicit `tls.cert`/`tls.key` is configured:
+**Auto-TLS:** When `tls.auto: true` is set and no explicit `tls.cert`/`tls.key` is configured:
 
 1. Check `tls.dir` (default `~/.axon-server/tls/`) for `ca.crt`
 2. If missing: generate ECDSA P-256 CA (10-year) + server cert (1-year)
@@ -201,9 +183,9 @@ All persistent state (except audit) lives in a **single SQLite database** with W
 db, err := sql.Open("sqlite", dataDBPath)
 db.Exec("PRAGMA journal_mode=WAL")
 
-registryStore := registry.NewSQLiteStoreFromDB(db)
-tokenStore    := auth.NewTokenStoreFromDB(db)
-userStore     := auth.NewUserStoreFromDB(db)
+registryStore  := registry.NewSQLiteStoreFromDB(db)
+tokenStore     := auth.NewTokenStoreFromDB(db)
+joinTokenStore := auth.NewJoinTokenStoreFromDB(db)
 ```
 
 Each store creates its own tables via `CREATE TABLE IF NOT EXISTS`. The shared connection is closed last in `GracefulStop` after all stores are shut down.
@@ -220,8 +202,8 @@ See [Configuration Reference](configuration.md) for the full YAML spec.
 3. Initialize registry store → load all nodes (mark offline)
 4. Initialize token store → load revoked JTIs into memory
 5. Initialize token checker
-6. Initialize user store → bootstrap config users (INSERT OR IGNORE)
-7. Auto-TLS: generate or load certificates
+6. Initialize join token store
+7. Auto-TLS: generate or load certificates (if enabled)
 8. Build gRPC server with auth interceptors
 9. Initialize audit store + writer
 10. Register all gRPC services
@@ -235,8 +217,7 @@ See [Configuration Reference](configuration.md) for the full YAML spec.
 1. Stop accepting new connections
 2. GracefulStop gRPC (wait for in-flight RPCs)
 3. Close audit writer (flush buffer)
-4. Close user store
-5. Close token store
+4. Close token store
 6. Close registry (flush heartbeat batch)
 7. Close shared database
 8. Exit

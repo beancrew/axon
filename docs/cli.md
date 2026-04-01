@@ -180,10 +180,6 @@ Ready. Press Ctrl+C to stop.
 
 ---
 
-## Auth Commands
-
----
-
 ## Token Commands
 
 ### `axon token list`
