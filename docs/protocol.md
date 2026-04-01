@@ -12,7 +12,7 @@ All communication uses gRPC over HTTP/2 with Protocol Buffers serialization. Thr
 |------|---------|----------|---------|
 | `control.proto` | `axon.control` | `ControlService` | Agent ↔ Server control plane |
 | `operations.proto` | `axon.operations` | `OperationsService`, `AgentOpsService` | CLI operations + agent task handling |
-| `management.proto` | `axon.management` | `ManagementService` | Node/user/token management + auth |
+| `management.proto` | `axon.management` | `ManagementService` | Node/token/join-token management + agent enrollment |
 
 ## ControlService (Agent ↔ Server)
 
@@ -137,7 +137,7 @@ The server acts as a transparent bridge — relaying between the CLI's `Operatio
 
 ## ManagementService (CLI → Server)
 
-Node management, authentication, token management, and user management.
+Node management, token management, and join token management.
 
 ```protobuf
 service ManagementService {
@@ -146,18 +146,17 @@ service ManagementService {
   rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
 
-  // Authentication
-  rpc Login(LoginRequest) returns (LoginResponse);
-
   // Token management
   rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
   rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
 
-  // User management
-  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  // Join token management
+  rpc CreateJoinToken(CreateJoinTokenRequest) returns (CreateJoinTokenResponse);
+  rpc ListJoinTokens(ListJoinTokensRequest) returns (ListJoinTokensResponse);
+  rpc RevokeJoinToken(RevokeJoinTokenRequest) returns (RevokeJoinTokenResponse);
+
+  // Agent enrollment (no auth — token is self-authenticating)
+  rpc JoinAgent(JoinAgentRequest) returns (JoinAgentResponse);
 }
 ```
 
@@ -168,14 +167,6 @@ service ManagementService {
 | `ListNodes` | — | `repeated NodeSummary` | JWT |
 | `GetNode` | `node_id` | `NodeSummary + labels + uptime` | JWT |
 | `RemoveNode` | `node_id` | `success/error` | JWT |
-
-### Authentication
-
-| RPC | Input | Output | Auth |
-|-----|-------|--------|------|
-| `Login` | `username, password` | `token, expires_at` | **None** (public endpoint) |
-
-Login validates credentials against the user store (SQLite). On success, issues a JWT with a unique JTI. The token is also persisted to the token store for listing/revocation.
 
 ### Token Management
 
@@ -188,34 +179,46 @@ Login validates credentials against the user store (SQLite). On success, issues 
 
 Revoked tokens are loaded into an in-memory set on startup and checked in the gRPC interceptor (O(1) per request).
 
-### User Management
+### Join Token Management
 
 | RPC | Input | Output | Auth |
 |-----|-------|--------|------|
-| `CreateUser` | `username, password, node_ids` | `success/error` | JWT |
-| `UpdateUser` | `username, password?, node_ids?` | `success/error` | JWT |
-| `DeleteUser` | `username` | `success/error` | JWT |
-| `ListUsers` | — | `repeated UserInfo` | JWT |
+| `CreateJoinToken` | `max_uses, expires_seconds` | `token, id` | JWT |
+| `ListJoinTokens` | — | `repeated JoinTokenInfo` | JWT |
+| `RevokeJoinToken` | `id` | `success/error` | JWT |
 
-`UserInfo` includes: `username`, `node_ids`, `created_at`, `updated_at`, `disabled`.
+`JoinTokenInfo` includes: `id`, `created_at`, `uses`, `max_uses`, `expires_at`, `revoked`.
 
-Update semantics:
-- `password` empty → leave unchanged
-- `node_ids` nil → leave unchanged
-- `node_ids` empty list → clear all node access
+Join tokens are one-time-use or limited-use tokens that allow new agents to enroll without needing a pre-existing JWT.
+
+### Agent Enrollment
+
+| RPC | Input | Output | Auth |
+|-----|-------|--------|------|
+| `JoinAgent` | `join_token, node_name, info` | `agent_token, node_id, ca_cert_pem` | **None** (token is self-authenticating) |
+
+The agent presents a join token. The server validates it, assigns a stable `node_id`, signs an agent JWT, and returns the CA certificate PEM (if TLS is enabled). The agent saves the config and uses the JWT for subsequent `Connect` calls.
 
 ## Authentication Flow
+
+### Token-Based Auth
+
+Authentication uses pre-issued tokens. `axon-server init` generates:
+- An **admin CLI token** (no expiry, access to all nodes)
+- An **initial join token** (for enrolling the first agent)
+
+There is no login RPC — tokens are issued at init time or via `CreateJoinToken`.
 
 ### JWT Structure
 
 ```
 Header: {"alg": "HS256", "typ": "JWT"}
 Payload: {
-  "sub": "gary",           // username
-  "node_ids": ["*"],       // allowed nodes
-  "jti": "uuid-...",       // unique token ID
-  "exp": 1234567890,       // expiry
-  "iat": 1234567890        // issued at
+  "sub": "admin",           // token identity
+  "node_ids": ["*"],        // allowed nodes ("*" = all)
+  "jti": "uuid-...",        // unique token ID (for revocation)
+  "exp": 0,                 // expiry (0 = never)
+  "iat": 1234567890         // issued at
 }
 ```
 
@@ -230,7 +233,7 @@ All authenticated RPCs pass through a unary/stream interceptor that:
 5. Injects claims into context
 
 **Bypass exceptions:**
-- `ManagementService/Login` — no auth required
+- `ManagementService/JoinAgent` — join token is self-authenticating
 - `ControlService/Connect` — agent token validated in handler
 
 ## Wire Patterns
@@ -243,3 +246,4 @@ All authenticated RPCs pass through a unary/stream interceptor that:
 | `forward` | Bidi stream | TaskSignal + HandleTask bidi | raw TCP bytes |
 | `node list` | Unary | — | — |
 | `token list` | Unary | — | — |
+| `join-token` | Unary | — | — |

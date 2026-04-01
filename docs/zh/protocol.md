@@ -12,7 +12,7 @@
 |------|-----|------|------|
 | `control.proto` | `axon.control` | `ControlService` | Agent ↔ Server 控制面 |
 | `operations.proto` | `axon.operations` | `OperationsService`、`AgentOpsService` | CLI 操作 + Agent 任务处理 |
-| `management.proto` | `axon.management` | `ManagementService` | 节点/用户/Token 管理 + 认证 |
+| `management.proto` | `axon.management` | `ManagementService` | 节点/Token/Join Token 管理 + Agent 注册 |
 
 ## ControlService（Agent ↔ Server）
 
@@ -61,46 +61,63 @@ service ManagementService {
   rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
   rpc RemoveNode(RemoveNodeRequest) returns (RemoveNodeResponse);
 
-  // 认证
-  rpc Login(LoginRequest) returns (LoginResponse);
-
   // Token 管理
   rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
   rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
 
-  // 用户管理
-  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  // Join Token 管理
+  rpc CreateJoinToken(CreateJoinTokenRequest) returns (CreateJoinTokenResponse);
+  rpc ListJoinTokens(ListJoinTokensRequest) returns (ListJoinTokensResponse);
+  rpc RevokeJoinToken(RevokeJoinTokenRequest) returns (RevokeJoinTokenResponse);
+
+  // Agent 注册（无需认证 — token 自验证）
+  rpc JoinAgent(JoinAgentRequest) returns (JoinAgentResponse);
 }
 ```
 
-### 认证相关
+### Token 管理
 
-- `Login`：无需认证，验证用户名密码，返回带 JTI 的 JWT
 - `RevokeToken`/`ListTokens`：需要 JWT 认证
 - 吊销的 Token 在内存 set 中 O(1) 检查
 
-### 用户管理
+### Join Token 管理
 
-- `CreateUser`：用户名 + 密码 + 节点权限
-- `UpdateUser`：密码为空 = 不改；node_ids 为 nil = 不改
-- `DeleteUser`：按用户名删除
-- `ListUsers`：返回所有用户信息（不含密码哈希）
+| RPC | 输入 | 输出 | 认证 |
+|-----|------|------|------|
+| `CreateJoinToken` | `max_uses, expires_seconds` | `token, id` | JWT |
+| `ListJoinTokens` | — | `repeated JoinTokenInfo` | JWT |
+| `RevokeJoinToken` | `id` | `success/error` | JWT |
+
+Join token 是一次性或限次使用的令牌，允许新 Agent 无需现有 JWT 即可注册。
+
+### Agent 注册
+
+| RPC | 输入 | 输出 | 认证 |
+|-----|------|------|------|
+| `JoinAgent` | `join_token, node_name, info` | `agent_token, node_id, ca_cert_pem` | **无**（token 自验证） |
+
+Agent 提交 join token → Server 验证 → 分配稳定 `node_id` → 签发 Agent JWT → 返回 CA 证书 PEM（如启用 TLS）。
 
 ## 认证流程
+
+### Token 认证
+
+使用预签发 Token 认证。`axon-server init` 生成：
+- **Admin CLI Token**（永不过期，可访问所有节点）
+- **初始 Join Token**（用于注册第一个 Agent）
+
+没有 Login RPC — Token 在 init 时或通过 `CreateJoinToken` 签发。
 
 ### JWT 结构
 
 ```
 Header: {"alg": "HS256", "typ": "JWT"}
 Payload: {
-  "sub": "gary",           // 用户名
-  "node_ids": ["*"],       // 允许的节点
-  "jti": "uuid-...",       // 唯一 Token ID
-  "exp": 1234567890,       // 过期时间
-  "iat": 1234567890        // 签发时间
+  "sub": "admin",           // Token 身份
+  "node_ids": ["*"],        // 允许的节点（"*" = 全部）
+  "jti": "uuid-...",        // 唯一 Token ID（用于吊销）
+  "exp": 0,                 // 过期时间（0 = 永不过期）
+  "iat": 1234567890         // 签发时间
 }
 ```
 
@@ -112,4 +129,4 @@ Payload: {
 4. 检查 JTI 是否已吊销 → `UNAUTHENTICATED`
 5. 注入 claims 到 context
 
-**豁免**：`ManagementService/Login`（无需认证）、`ControlService/Connect`（Handler 内验证）
+**豁免**：`ManagementService/JoinAgent`（token 自验证）、`ControlService/Connect`（Handler 内验证）
