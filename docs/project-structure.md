@@ -1,5 +1,6 @@
 # Axon Project Structure
 
+> [中文版 / Chinese](zh/project-structure.md)
 
 ## Directory Layout
 
@@ -102,6 +103,7 @@ axon/
 ├── go.mod
 ├── go.sum
 ├── README.md
+├── README_zh.md
 ├── CONTRIBUTING.md
 └── .gitignore
 ```

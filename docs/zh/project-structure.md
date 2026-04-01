@@ -58,7 +58,7 @@ axon/
 ├── test/integration/                # 端到端集成测试
 ├── docs/                            # 文档（英文 + 中文）
 ├── Makefile
-├── README.md
+├── README.md / README_zh.md
 └── CONTRIBUTING.md
 ```
 

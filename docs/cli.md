@@ -1,5 +1,6 @@
 # Axon CLI Reference
 
+> [中文版 / Chinese](zh/cli.md)
 
 ## Overview
 

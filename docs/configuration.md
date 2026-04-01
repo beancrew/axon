@@ -2,6 +2,7 @@
 
 Complete reference for all Axon configuration files and environment variables.
 
+> [中文版 / Chinese](zh/configuration.md)
 
 ---
 

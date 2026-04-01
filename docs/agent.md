@@ -1,5 +1,6 @@
 # Axon Agent Design
 
+> [中文版 / Chinese](zh/agent.md)
 
 ## Overview
 
