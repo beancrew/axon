@@ -1,6 +1,6 @@
 # Axon CLI Reference
 
-> [中文版 / Chinese](zh/cli.md)
+> [中文](zh/cli.md)
 
 ## Overview
 

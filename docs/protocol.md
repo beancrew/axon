@@ -1,6 +1,6 @@
 # Axon Protocol Design
 
-> [中文版 / Chinese](zh/protocol.md)
+> [中文](zh/protocol.md)
 
 ## Overview
 
