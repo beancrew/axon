@@ -13,10 +13,10 @@
 推荐用 `axon-server init` 生成配置：
 
 ```bash
-axon-server init --admin admin --password secret --listen :9090
+axon-server init --listen :9090
 ```
 
-自动生成 `~/.axon-server/config.yaml`，包含随机 JWT 密钥、管理员用户，并创建 SQLite 数据库。完整流程见[快速开始](quickstart.md)。
+自动生成 `~/.axon-server/config.yaml`，包含随机 JWT 密钥，签发无过期 admin token 和初始 join token，并初始化 SQLite 数据库。完整流程见[快速开始](quickstart.md)。
 
 ### 配置文件
 
@@ -35,14 +35,6 @@ tls:
 
 auth:
   jwt_signing_key: "${AXON_JWT_SECRET}"   # HMAC-SHA256 签名密钥（必需；init 自动生成）
-
-users:                                    # 引导用户（首次启动时写入数据库）
-  - username: admin
-    password_hash: "$2a$10$..."           # bcrypt 哈希
-    node_ids: ["*"]                       # ["*"] = 可访问所有节点
-  - username: deploy-agent
-    password_hash: "$2a$10$..."
-    node_ids: ["web-1", "web-2"]          # 限制到特定节点
 
 data:
   db_path: "/var/lib/axon-server/axon.db" # SQLite 持久化路径（默认：内存）
@@ -65,9 +57,6 @@ audit:
 | `tls.cert` | string | — | TLS 证书路径（PEM），覆盖 auto-TLS |
 | `tls.key` | string | — | TLS 私钥路径（PEM） |
 | `auth.jwt_signing_key` | string | — | **必需。** HMAC-SHA256 JWT 签名密钥 |
-| `users[].username` | string | — | 引导用户名 |
-| `users[].password_hash` | string | — | 密码 bcrypt 哈希 |
-| `users[].node_ids` | []string | `["*"]` | 允许的节点 ID；`["*"]` = 全部 |
 | `data.db_path` | string | `:memory:` | 节点注册、Token、用户、join token 的 SQLite 路径 |
 | `heartbeat.interval` | duration | `10s` | Agent 心跳间隔 |
 | `heartbeat.timeout` | duration | `30s` | 离线阈值 |
