@@ -103,7 +103,6 @@ axon/
 ├── go.mod
 ├── go.sum
 ├── README.md
-├── README_zh.md
 ├── CONTRIBUTING.md
 └── .gitignore
 ```

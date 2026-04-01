@@ -3,171 +3,169 @@
 [![CI](https://github.com/beancrew/axon/actions/workflows/ci.yml/badge.svg)](https://github.com/beancrew/axon/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**The nerve connecting AI agents to real machines.**
+**连接 AI Agent 与真实机器的神经通路。**
 
-Axon is infrastructure for AI agents. It lets agents operate remote machines — execute commands, read/write files, forward ports — as naturally as operating locally.
+Axon 是为 AI agent 构建的基础设施。它让 agent 操作远程机器——执行命令、读写文件、转发端口——像操作本地一样自然。
 
-No SSH keys to manage. No YAML to write. No complex APIs to learn. Just a CLI that any agent already knows how to use.
+不需要管理 SSH 密钥，不需要写 YAML，不需要学复杂 API。一个 CLI，任何 agent 都天然会用。
 
-> [中文版 / Chinese](README_zh.md)
+## 为什么做 Axon？
 
-## Why Axon?
+今天的基础设施是为人构建的：Web 管理后台、SSH 终端、配置文件。AI agent 无法原生使用这些东西。
 
-Today's infrastructure is built for humans: web dashboards, SSH terminals, config files. AI agents can't use any of that natively.
-
-Axon bridges this gap. It provides **low-level, composable primitives** that agents combine with skills (knowledge) to accomplish any task. We don't over-abstract — agents are smart enough to figure out the "how" when given the right tools.
+Axon 填补这个空白。它提供**底层、可组合的原子操作**，agent 通过 skill（知识文件）学会如何组合这些操作完成任意任务。我们不做过度封装——agent 足够聪明，给它工具就够了。
 
 ```
-AI Agent (any framework)
+AI Agent（任意框架）
     │
     │  CLI (exec / read / write / forward)
     ▼
 ┌────── Axon Server ──────┐
-│  Auth · Routing · Audit  │
+│  认证 · 路由 · 审计日志  │
 └──────────────────────────┘
     │         │         │
     ▼         ▼         ▼
-  Node A    Node B    Node C
-  (any machine: bare metal / VM / container / edge device)
+  节点 A    节点 B    节点 C
+  (任何机器：物理机 / 虚拟机 / 容器 / 边缘设备)
 ```
 
-## Core Principles
+## 核心原则
 
-1. **Low-level primitives, not high-level abstractions** — We provide `exec`, `read`, `write`, `forward`. Not `deploy()` or `check_health()`. Agents decide how to combine them.
+1. **底层原语，不是高层抽象** — 提供 `exec`、`read`、`write`、`forward`。不提供 `deploy()` 或 `check_health()`。让 agent 自己决定怎么组合。
 
-2. **CLI-first** — Every agent framework can call CLI tools. No SDK required, no protocol lock-in.
+2. **CLI 优先** — 所有 agent 框架都能调 CLI。不需要 SDK，不锁定协议。
 
-3. **Teach, don't hardcode** — Domain knowledge lives in skills (markdown files), not in code. Want the agent to deploy a Docker service? Write a skill. Want it to run a database backup? Write a skill. The CLI stays the same.
+3. **教而不是写死** — 领域知识放在 skill（markdown 文件）里，不写在代码里。想让 agent 部署 Docker 服务？写个 skill。想让它做数据库备份？写个 skill。CLI 不变。
 
-4. **Zero-config for nodes** — Install the agent binary, point it at the server, done. No SSH keys, no firewall rules, no port forwarding.
+4. **节点零配置** — 装上 agent 二进制，指向 server，完事。不需要 SSH 密钥、防火墙规则、端口映射。
 
-5. **Agent-native, human-friendly** — Designed for agents, but humans can use it too for debugging and inspection.
+5. **Agent 原生，人也能用** — 为 agent 设计，但人也可以直接用来调试和排查。
 
-## Quick Start
+## 快速开始
 
 ```bash
-# Install (auto-detects OS/arch)
+# 安装（自动检测 OS/架构）
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- server
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- agent
 curl -fsSL https://raw.githubusercontent.com/beancrew/axon/main/scripts/install.sh | sh -s -- cli
 
-# 1. Initialize server (save the admin token and join token from the output)
+# 1. 初始化 server（保存输出中的 admin token 和 join token）
 axon-server init
 
-# 2. Start server
+# 2. 启动 server
 axon-server start
 
-# 3. Join a node (on the target machine)
+# 3. 在目标机器上加入节点
 axon-agent join <server-addr>:9090 <join-token>
 
-# 4. Configure CLI
+# 4. 配置 CLI
 axon config set server <server-addr>:9090
 axon config set token <admin-token>
 
-# 5. Use it
+# 5. 使用
 axon exec my-node "hostname"
 ```
 
-→ Full guide: [Quick Start](docs/quickstart.md)
+→ 完整指南：[Quick Start](docs/quickstart.md)
 
-## CLI Reference
+## CLI 参考
 
-### Node Management
+### 节点管理
 
 ```bash
-axon node list                 # List all connected nodes
-axon node info <node>          # Node details
-axon node remove <node>        # Remove a node
+axon node list                 # 查看所有在线节点
+axon node info <node>          # 节点详情
+axon node remove <node>        # 移除节点
 ```
 
-### Core Operations
+### 核心操作
 
 ```bash
-# Execute a command on a remote node
+# 远程执行命令
 axon exec <node> <command>
 axon exec web-1 "docker ps"
 axon exec db-1 "pg_dump mydb > /tmp/backup.sql"
 
-# Read a file from a remote node
+# 读取远程文件
 axon read <node> <path>
 axon read web-1 /etc/nginx/nginx.conf > local.conf
 
-# Write a file to a remote node (stdin)
+# 写文件到远程节点（stdin）
 echo "hello" | axon write web-1 /tmp/hello.txt
 cat config.yaml | axon write web-1 /etc/app/config.yaml
 
-# Port forwarding
-axon forward create db-1 5432:5432    # Non-blocking, managed
-axon forward list                      # List active forwards
-axon forward delete <id>               # Remove a forward
-axon forward db-1 5432:5432           # Blocking shorthand
+# 端口转发
+axon forward create db-1 5432:5432    # 非阻塞，daemon 管理
+axon forward list                      # 列出活跃转发
+axon forward delete <id>               # 删除转发
+axon forward db-1 5432:5432           # 阻塞式简写
 ```
 
-4 operations. Everything else is a combination of these, guided by skills.
+4 个操作。其他一切都是这些的组合，由 skill 指导。
 
-→ Full reference: [CLI Reference](docs/cli.md)
+→ 完整参考：[CLI Reference](docs/cli.md)
 
-## How Agents Use Axon
+## Agent 如何使用 Axon
 
-An agent doesn't need special integration. It just calls the CLI:
+Agent 不需要特殊集成，直接调 CLI：
 
 ```python
-# Any agent framework
+# 任意 agent 框架
 result = exec("axon exec web-1 'systemctl status nginx'")
 config = exec("axon read web-1 /etc/nginx/nginx.conf")
 exec("echo '...' | axon write web-1 /etc/nginx/nginx.conf")
 exec("axon exec web-1 'systemctl reload nginx'")
 ```
 
-Domain knowledge comes from **skills** — markdown files that teach the agent what to do:
+领域知识来自 **skill**——教 agent 怎么做的 markdown 文件：
 
 ```markdown
 # skill: deploy-service
-## Steps
+## 步骤
 1. axon write <node> /opt/<service>/docker-compose.yaml
 2. axon exec <node> "cd /opt/<service> && docker compose pull"
 3. axon exec <node> "cd /opt/<service> && docker compose up -d"
-4. axon exec <node> "docker ps | grep <service>"  # verify
+4. axon exec <node> "docker ps | grep <service>"  # 验证
 ```
 
-Different scenario? Different skill. Same CLI.
+不同场景？换个 skill。CLI 不变。
 
-An [AgentSkill for Axon](skills/axon/) is included in this repo.
+本仓库包含一个 [Axon AgentSkill](skills/axon/)。
 
-## Features
+## 功能特性
 
-- **Remote execution** — Run commands on any connected node, real-time stdout/stderr streaming
-- **File operations** — Read and write files on remote nodes via stdin/stdout
-- **Port forwarding** — Map remote ports to localhost, with daemon-managed multi-forward support
-- **Reverse connection** — Nodes connect outbound to server; no inbound ports, works behind NAT/firewalls
-- **Token-based auth** — JWT with JTI, revocation, and join-token enrollment for agents
-- **Token management** — List, revoke tokens and join tokens via CLI
-- **Auto-TLS** — Self-signed CA and server certificate generated automatically; BYO cert supported
-- **Audit logging** — Every operation recorded with timestamp, caller, node, and result
-- **Single-binary deployment** — One binary per component, cross-platform (Linux/macOS, amd64/arm64)
-- **Server daemon mode** — Run server in background with `--daemon`, stop with `axon-server stop`
+- **远程执行** — 在任意节点运行命令，实时 stdout/stderr 流式输出
+- **文件操作** — 通过 stdin/stdout 读写远程文件
+- **端口转发** — 远程端口映射到本地，支持 daemon 管理多转发
+- **反向连接** — 节点主动外连 server，无需开入站端口，NAT/防火墙无障碍
+- **Token 认证** — JWT + JTI + 吊销，join-token 快速注册 agent
+- **Token 管理** — 通过 CLI 列表、吊销 token 和 join token
+- **自动 TLS** — 自签 CA + 服务器证书自动生成，也支持自带证书
+- **审计日志** — 每个操作记录时间、调用者、节点和结果
+- **单二进制部署** — 每个组件一个二进制，跨平台（Linux/macOS，amd64/arm64）
+- **Server daemon 模式** — `--daemon` 后台运行，`axon-server stop` 停止
 
-## Security Model
+## 安全模型
 
-- **No inbound ports on nodes** — Agents connect outbound only; no SSH, no open ports
-- **Token revocation** — Compromised tokens can be revoked instantly via CLI
-- **Patent protection** — Apache 2.0 license includes patent grant
-- **Full audit trail** — Who did what, on which node, when — every operation recorded
+- **节点无入站端口** — Agent 仅外连，不开 SSH，不开端口
+- **Token 吊销** — 被泄露的 token 可通过 CLI 即时吊销
+- **专利保护** — Apache 2.0 许可证包含专利授权
+- **完整审计链** — 谁、在哪台机器、什么时候、做了什么——全部记录
 
-## Documentation
+## 文档
 
-- [Quick Start Guide](docs/quickstart.md) — Get running in 5 minutes
-- [Configuration Reference](docs/configuration.md) — All config options
-- [Architecture Overview](docs/architecture.md) — How components fit together
-- [CLI Reference](docs/cli.md) — Full command reference
-- [Protocol Design](docs/protocol.md) — gRPC/protobuf details
-- [Server Design](docs/server.md) — Server internals
-- [Agent Design](docs/agent.md) — Agent internals
+- [Quick Start Guide](docs/quickstart.md) — 5 分钟上手
+- [Configuration Reference](docs/configuration.md) — 所有配置选项
+- [Architecture Overview](docs/architecture.md) — 组件架构
+- [CLI Reference](docs/cli.md) — 完整命令参考
+- [Protocol Design](docs/protocol.md) — gRPC/protobuf 协议细节
+- [Server Design](docs/server.md) — Server 设计文档
+- [Agent Design](docs/agent.md) — Agent 设计文档
 
-## Contributing
+## 贡献
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branch conventions, and PR guidelines.
+参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## License
+## 许可证
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — 参见 [LICENSE](LICENSE)。
