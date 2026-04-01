@@ -2,8 +2,6 @@
 
 Thanks for your interest in contributing to Axon! This guide covers how to set up your environment, make changes, and submit a pull request.
 
-> [中文版 / Chinese](#贡献指南)
-
 ## Getting Started
 
 ### Prerequisites
@@ -113,67 +111,4 @@ axon/
 - Include: what you did, what you expected, what happened, and environment info
 - For security vulnerabilities, see [SECURITY.md](SECURITY.md)
 
----
 
-# 贡献指南
-
-感谢你对 Axon 的贡献！以下是开发设置、提交变更和发起 PR 的指南。
-
-## 快速开始
-
-### 前置条件
-
-- Go 1.25+
-- `protoc`（Protocol Buffers 编译器）— 修改 proto 时需要
-- `make`
-
-### 构建
-
-```bash
-git clone https://github.com/beancrew/axon.git
-cd axon
-make build
-```
-
-### 测试
-
-```bash
-make test     # 单元测试
-make lint     # golangci-lint
-```
-
-## 开发流程
-
-1. Fork 仓库并 clone 你的 fork
-2. 从 `main` 创建分支
-3. 修改代码
-4. 确保 `go build ./...`、`go test ./...`、`make lint` 通过
-5. 提交（参见上方 Commit Convention）
-6. Push 并向 `main` 发起 PR
-
-## 规范
-
-- Commit message、PR title/body：**英文**
-- 文档：中英双语
-- 代码注释：英文
-- 一个 PR 一个逻辑变更
-- CI 全绿才能合并
-- Squash merge，合并后删除分支
-
-## 项目结构
-
-```
-axon/
-├── cmd/                # 三个二进制入口
-├── internal/           # 内部共享包
-├── gen/proto/          # 生成的 protobuf 代码
-├── proto/              # Proto 源文件
-├── docs/               # 文档
-├── scripts/            # 构建和安装脚本
-└── skills/             # AgentSkills
-```
-
-## 报告问题
-
-- 使用 [GitHub Issues](https://github.com/beancrew/axon/issues)
-- 安全漏洞请参见 [SECURITY.md](SECURITY.md)
